@@ -1,0 +1,23 @@
+schema_version: agentmint.mission_control.update.v1
+id: upd-2026-05-23-001
+entity_type: initiative
+entity_id: init-2026-05-23-001
+author: jannovak
+title: V2 fáze 1 — skelet souborové databáze
+message: |
+  Fáze 1 přidává schémata pro 11 entit, layout data/v1/, seed pracovního
+  prostoru, týmu, pracovního postupu, štítků a pohledů a entity API. UI
+  cockpit a refaktor TODO bridge jdou do fáze 2/3. Plans/ zůstávají jako
+  strategická vrstva.
+health: on_track
+tags:
+  - mission-control
+  - v2
+  - phase-1
+created_at: 2026-05-23
+updated_at: 2026-05-23
+links:
+  - label: Iniciativa
+    path: data/v1/initiatives/mission-control-v2.yaml
+  - label: Projekt
+    path: data/v1/projects/mission-control-v2-phase-1.yaml

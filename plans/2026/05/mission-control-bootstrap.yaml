@@ -1,0 +1,47 @@
+schema_version: agentmint.mission_control.feature_plan.v1
+id: plan-2026-05-23-001
+title: Mission Control jako strategické centrum AgentMintu
+type: strategy
+status: shaping
+owner: jannovak
+created_at: 2026-05-23
+updated_at: 2026-05-23
+
+context: |
+  AgentMint potřebuje jedno lokální místo, kde vzniká strategická agenda,
+  feature plány a orchestrace práce. Data mají být obyčejné YAML soubory ve
+  workspace, aby je agenti mohli číst, diffovat, upravovat a generovat z nich
+  implementační TODO bez závislosti na externí službě.
+
+goals:
+  - Spustit Mission Control jako Launchpad aplikaci.
+  - Držet strategické kroky firmy v YAML souborech.
+  - Napojit plánovací vrstvu na `TODO.tasks.json`.
+  - Zachovat plnou čitelnost a editovatelnost pro agenty.
+
+scope:
+  in:
+    - YAML feature/strategy plans
+    - lokální Launchpad UI
+    - seznam a detail strategických plánů
+    - vytvoření nového planu přes UI
+  out:
+    - externí task manager
+    - serverová databáze
+    - automatické přepisování TODO bez schválení
+
+acceptance_criteria:
+  - Launchpad umí Mission Control najít v seznamu aplikací.
+  - Mission Control se spustí na lokálním portu.
+  - UI zobrazí tento YAML plan.
+  - UI umí vytvořit nový YAML plan ve workspace.
+  - TODO tasky umí nést `planning` referenci na YAML plan.
+
+todo_outputs:
+  - task-2026-05-23-001
+
+links:
+  - label: Root task
+    path: TODO.tasks.json
+  - label: Planning model reference
+    path: company/agents/reference/mission-control-planning-model.md

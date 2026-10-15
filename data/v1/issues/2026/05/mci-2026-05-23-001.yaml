@@ -1,0 +1,36 @@
+schema_version: agentmint.mission_control.issue.v1
+id: mci-2026-05-23-001
+title: Vyzkoušet end-to-end načtení souborové databáze v aplikaci Mission Control
+status: todo
+workflow_id: wf-default
+team_id: team-agentmint
+priority: high
+owner: jannovak
+assignee: agent
+project_id: proj-2026-05-23-001
+cycle_id: cycle-2026-21
+labels:
+  - label-mission-control
+summary: |
+  Smoke seed úkol, který ověřuje, že loader databáze umí načíst YAML soubor
+  úkolu, zvalidovat ho proti issue.schema.json a vystavit ho přes
+  /api/entities/issue.
+tags:
+  - smoke
+  - mission-control
+  - filesystem-db
+planning:
+  plan_id: plan-2026-05-23-009
+  path: plans/2026/05/mission-control-linear-filesystem-core.yaml
+  source: mission-control
+  role: planning_source
+todo_task_id: task-2026-05-23-006
+created_at: 2026-05-23
+updated_at: 2026-05-23
+links:
+  - label: Projekt
+    path: data/v1/projects/mission-control-v2-phase-1.yaml
+  - label: Iniciativa
+    path: data/v1/initiatives/mission-control-v2.yaml
+  - label: Plán V2
+    path: plans/2026/05/mission-control-linear-filesystem-core.yaml

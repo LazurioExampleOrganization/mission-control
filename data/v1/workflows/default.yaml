@@ -1,0 +1,43 @@
+schema_version: agentmint.mission_control.workflow.v1
+id: wf-default
+name: DEFAULT_WORKFLOW
+description: |
+  Výchozí workflow úkolů inspirované Linearem: BACKLOG → TODO →
+  IN_PROGRESS → CODE_REVIEW → BLOCKED → DONE / CANCELED. Drží mentální
+  model práce agenta i lidského kolegy v AgentMintu.
+owner: jannovak
+default_status: backlog
+statuses:
+  - id: backlog
+    name: BACKLOG
+    category: backlog
+    color: "#94a3b8"
+  - id: todo
+    name: TODO
+    category: unstarted
+    color: "#64748b"
+  - id: in_progress
+    name: IN_PROGRESS
+    category: started
+    color: "#2563eb"
+  - id: in_review
+    name: CODE_REVIEW
+    category: started
+    color: "#f59e0b"
+  - id: blocked
+    name: BLOCKED
+    category: started
+    color: "#dc2626"
+  - id: done
+    name: DONE
+    category: completed
+    color: "#16a34a"
+  - id: canceled
+    name: CANCELED
+    category: canceled
+    color: "#64748b"
+created_at: 2026-05-23
+updated_at: 2026-05-23
+links:
+  - label: Pracovní prostor
+    path: data/v1/workspace.yaml

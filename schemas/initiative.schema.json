@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "agentmint.mission_control.initiative.v1",
+  "title": "Mission Control initiative",
+  "description": "Company-level strategic goal spanning multiple projects. Linear: Initiative.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "id",
+    "title",
+    "status",
+    "owner",
+    "created_at",
+    "updated_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "agentmint.mission_control.initiative.v1"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^init-[0-9]{4}-[0-9]{2}-[0-9]{2}-[0-9]{3}$"
+    },
+    "title": { "type": "string", "minLength": 1 },
+    "status": {
+      "enum": ["shaping", "active", "paused", "done", "archived"]
+    },
+    "owner": { "type": "string", "minLength": 1 },
+    "context": { "type": "string" },
+    "goals": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "target_date": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+    },
+    "projects": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^proj-[0-9]{4}-[0-9]{2}-[0-9]{2}-[0-9]{3}$"
+      }
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "planning_source": {
+      "type": "object",
+      "properties": {
+        "plan_id": { "type": "string" },
+        "path": { "type": "string" },
+        "url": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "created_at": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+    "updated_at": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+    "links": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["label"],
+        "properties": {
+          "label": { "type": "string", "minLength": 1 },
+          "path": { "type": "string", "minLength": 1 },
+          "url": { "type": "string", "minLength": 1 }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": true
+}

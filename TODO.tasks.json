@@ -1,0 +1,315 @@
+{
+  "schema_version": "companiesascode.todo_tasks.v1",
+  "scope": {
+    "id": "agentmint-mission-control",
+    "name": "Mission Control",
+    "path": "mission-control",
+    "owner": "jannovak"
+  },
+  "tasks": [
+    {
+      "id": "task-2026-05-23-002",
+      "title": "Doplnit export Mission Control planu do TODO.tasks.json",
+      "status": "open",
+      "priority": "high",
+      "priority_rank": 10,
+      "assignee": "agent",
+      "priority_decider": "jannovak",
+      "priority_reason": "Mission Control má držet plánovací kontext, ale implementační práce má vznikat jako konkrétní tasky v Git-native task ledgeru.",
+      "created_at": "2026-05-23",
+      "updated_at": "2026-05-23",
+      "tags": [
+        "planning",
+        "todo-export",
+        "yaml"
+      ],
+      "summary": "Navrhnout a implementovat první bezpečný export nebo návrhový generátor, který z YAML planu připraví task položky pro nejbližší TODO.tasks.json.",
+      "risk_notes": [
+        "Export nesmí přepisovat existující tasky bez explicitního schválení.",
+        "Plan může obsahovat strategický kontext; TODO má držet jen konkrétní implementační kroky."
+      ],
+      "acceptance_criteria": [
+        "Existuje návrh mappingu z plan YAML na TODO.tasks.json.",
+        "Export má dry-run režim.",
+        "Výstup obsahuje `planning` referenci zpět na YAML plan."
+      ],
+      "links": [
+        {
+          "label": "Architecture",
+          "path": "ARCHITECTURE.md"
+        },
+        {
+          "label": "First plan",
+          "path": "plans/2026/05/mission-control-bootstrap.yaml"
+        }
+      ]
+    },
+    {
+      "id": "task-2026-05-23-006",
+      "title": "Navrhnout Linear-like filesystem DB core pro Mission Control",
+      "status": "open",
+      "priority": "high",
+      "priority_rank": 20,
+      "assignee": "agent",
+      "priority_decider": "jannovak",
+      "priority_reason": "Mission Control má převzít core workflow Linearu, ale držet data jako YAML soubory v Git workspace, aby s nimi agenti mohli pracovat nativně.",
+      "created_at": "2026-05-23",
+      "updated_at": "2026-05-23",
+      "tags": [
+        "linear-like",
+        "filesystem-db",
+        "yaml-first",
+        "mission-control"
+      ],
+      "summary": "Připravit první architekturu a schema pro Mission Control core entity: issues, projects, initiatives, cycles, triage, labels, views, workflows a updates. Výsledkem má být jednoduchý filesystem DB kontrakt, který může číst UI i agenti.",
+      "risk_notes": [
+        "Nekopírovat Linear brand, UI texty, design ani cloud architekturu.",
+        "Views nesmí materializovat kopie dat; mají být uložené filtry nad YAML entitami.",
+        "Core model nesmí obejít současnou validaci ani bezpečný bridge do `TODO.tasks.json`."
+      ],
+      "acceptance_criteria": [
+        "Existuje dokumentovaný mapping Linear-like pojmů na Mission Control YAML entity.",
+        "Je navržena cílová složková struktura filesystem DB.",
+        "Je jasná V1/V2 hranice mezi současným `plans/` modelem a budoucím `issues/projects` core.",
+        "Vznikne návrh prvních schemas pro issue, project, initiative, workflow a view."
+      ],
+      "links": [
+        {
+          "label": "Linear-like core plan",
+          "path": "plans/2026/05/mission-control-linear-filesystem-core.yaml"
+        },
+        {
+          "label": "Architecture",
+          "path": "ARCHITECTURE.md"
+        }
+      ],
+      "planning": {
+        "plan_id": "plan-2026-05-23-009",
+        "path": "mission-control/plans/2026/05/mission-control-linear-filesystem-core.yaml",
+        "source": "mission-control",
+        "role": "planning_source"
+      }
+    },
+    {
+      "id": "task-2026-05-23-003",
+      "title": "Vyhodnotit dogfood plánovací smyčku Mission Controlu",
+      "status": "open",
+      "priority": "high",
+      "priority_rank": 50,
+      "assignee": "agent",
+      "priority_decider": "jannovak",
+      "priority_reason": "Ověřujeme Mission Control tím, že v něm plánujeme další vývoj Mission Controlu. Cílem je projít celý loop: plán vznikne jako YAML, plán obsahuje rozhodnutí a navržené tasky, export vytvoří implemen…",
+      "created_at": "2026-05-23",
+      "updated_at": "2026-05-23",
+      "tags": [
+        "mission-control",
+        "dogfood",
+        "planning-loop",
+        "filesystem-db",
+        "planning",
+        "friction"
+      ],
+      "summary": "Projít plán -> export -> TODO -> zpětná evidence a zapsat, které části jsou plynulé a které agenty zpomalují.",
+      "risk_notes": [
+        "Dogfood nesmí obejít vlastní pravidla; tasky musí vzniknout přes Mission Control export, ne jen ručním zápisem.",
+        "Pokud se workflow ukáže nepohodlný, je to validní výsledek testu a má se zapsat jako friction, ne zamaskovat.",
+        "Neplánovat business strategii AgentMintu, dokud planning core není dost stabilní pro zachycení rozhodnutí."
+      ],
+      "acceptance_criteria": [
+        "Je popsáno, co fungovalo v plan -> TODO flow.",
+        "Je popsáno, co vyžadovalo ruční zásah mimo UI nebo API.",
+        "Vznikne doporučení pro nejbližší zlepšení Mission Controlu."
+      ],
+      "links": [
+        {
+          "label": "Mission Control plan",
+          "path": "mission-control/plans/2026/05/dogfood-mission-control-planning-loop.yaml"
+        },
+        {
+          "label": "Linear-like core plan",
+          "path": "mission-control/plans/2026/05/mission-control-linear-filesystem-core.yaml"
+        },
+        {
+          "label": "Mission Control architecture",
+          "path": "mission-control/ARCHITECTURE.md"
+        },
+        {
+          "label": "Mission Control TODO",
+          "path": "mission-control/TODO.tasks.json"
+        }
+      ],
+      "planning": {
+        "plan_id": "plan-2026-05-23-010",
+        "path": "mission-control/plans/2026/05/dogfood-mission-control-planning-loop.yaml",
+        "source": "mission-control",
+        "role": "planning_source"
+      },
+      "source": "mission-control"
+    },
+    {
+      "id": "task-2026-05-23-004",
+      "title": "Navrhnout minimální strategický planning view pro AgentMint",
+      "status": "done",
+      "priority": "high",
+      "priority_rank": 51,
+      "assignee": "agent",
+      "priority_decider": "jannovak",
+      "priority_reason": "Ověřujeme Mission Control tím, že v něm plánujeme další vývoj Mission Controlu. Cílem je projít celý loop: plán vznikne jako YAML, plán obsahuje rozhodnutí a navržené tasky, export vytvoří implemen…",
+      "created_at": "2026-05-23",
+      "updated_at": "2026-05-23",
+      "tags": [
+        "mission-control",
+        "dogfood",
+        "planning-loop",
+        "filesystem-db",
+        "strategy",
+        "view"
+      ],
+      "summary": "Z dogfood zkušenosti navrhnout první view, ve kterém půjde plánovat AgentMint strategii před monetizační prací.",
+      "risk_notes": [
+        "Dogfood nesmí obejít vlastní pravidla; tasky musí vzniknout přes Mission Control export, ne jen ručním zápisem.",
+        "Pokud se workflow ukáže nepohodlný, je to validní výsledek testu a má se zapsat jako friction, ne zamaskovat.",
+        "Neplánovat business strategii AgentMintu, dokud planning core není dost stabilní pro zachycení rozhodnutí."
+      ],
+      "acceptance_criteria": [
+        "View má jasně oddělit initiatives, projects, issues a decisions.",
+        "View ukáže ready/in_progress strategické plány a jejich TODO outputs.",
+        "Návrh nevyžaduje externí databázi ani cloud službu."
+      ],
+      "links": [
+        {
+          "label": "Mission Control plan",
+          "path": "mission-control/plans/2026/05/dogfood-mission-control-planning-loop.yaml"
+        },
+        {
+          "label": "Linear-like core plan",
+          "path": "mission-control/plans/2026/05/mission-control-linear-filesystem-core.yaml"
+        },
+        {
+          "label": "Mission Control architecture",
+          "path": "mission-control/ARCHITECTURE.md"
+        },
+        {
+          "label": "Mission Control TODO",
+          "path": "mission-control/TODO.tasks.json"
+        }
+      ],
+      "planning": {
+        "plan_id": "plan-2026-05-23-010",
+        "path": "mission-control/plans/2026/05/dogfood-mission-control-planning-loop.yaml",
+        "source": "mission-control",
+        "role": "planning_source"
+      },
+      "source": "mission-control"
+    },
+    {
+      "id": "task-2026-05-23-005",
+      "title": "Doplnit chybějící editorové pole pro decisions",
+      "status": "open",
+      "priority": "medium",
+      "priority_rank": 102,
+      "assignee": "agent",
+      "priority_decider": "jannovak",
+      "priority_reason": "Ověřujeme Mission Control tím, že v něm plánujeme další vývoj Mission Controlu. Cílem je projít celý loop: plán vznikne jako YAML, plán obsahuje rozhodnutí a navržené tasky, export vytvoří implemen…",
+      "created_at": "2026-05-23",
+      "updated_at": "2026-05-23",
+      "tags": [
+        "mission-control",
+        "dogfood",
+        "planning-loop",
+        "filesystem-db",
+        "ui",
+        "decisions",
+        "editor"
+      ],
+      "summary": "UI detail už decisions zobrazuje, ale edit modal je neumí pohodlně upravit; doplnit minimální textové pole nebo YAML-friendly editor pattern.",
+      "risk_notes": [
+        "Dogfood nesmí obejít vlastní pravidla; tasky musí vzniknout přes Mission Control export, ne jen ručním zápisem.",
+        "Pokud se workflow ukáže nepohodlný, je to validní výsledek testu a má se zapsat jako friction, ne zamaskovat.",
+        "Neplánovat business strategii AgentMintu, dokud planning core není dost stabilní pro zachycení rozhodnutí."
+      ],
+      "acceptance_criteria": [
+        "Agent nebo člověk může přes UI doplnit decision s datem a rationale.",
+        "Uložení zachová validní YAML schema.",
+        "Existing plans UI zůstane funkční."
+      ],
+      "links": [
+        {
+          "label": "Mission Control plan",
+          "path": "mission-control/plans/2026/05/dogfood-mission-control-planning-loop.yaml"
+        },
+        {
+          "label": "Linear-like core plan",
+          "path": "mission-control/plans/2026/05/mission-control-linear-filesystem-core.yaml"
+        },
+        {
+          "label": "Mission Control architecture",
+          "path": "mission-control/ARCHITECTURE.md"
+        },
+        {
+          "label": "Mission Control TODO",
+          "path": "mission-control/TODO.tasks.json"
+        }
+      ],
+      "planning": {
+        "plan_id": "plan-2026-05-23-010",
+        "path": "mission-control/plans/2026/05/dogfood-mission-control-planning-loop.yaml",
+        "source": "mission-control",
+        "role": "planning_source"
+      },
+      "source": "mission-control"
+    },
+    {
+      "id": "task-2026-05-23-007",
+      "title": "Dovést root-level Mission Control work board migraci do ověřeného stavu",
+      "status": "review",
+      "priority": "high",
+      "priority_rank": 15,
+      "assignee": "agent",
+      "priority_decider": "jannovak",
+      "priority_reason": "Mission Control má být root-level control-plane repo a zároveň hlavní přehled plánované práce agentů nad filesystem ledgery.",
+      "created_at": "2026-05-23",
+      "updated_at": "2026-05-23",
+      "tags": [
+        "mission-control",
+        "root-repo",
+        "work-board",
+        "launchpad",
+        "filesystem-db"
+      ],
+      "summary": "Dokončit přesun Mission Controlu na root-level repo, přidat work board nad task ledgery, aktualizovat reference a ověřit Launchpad smoke test.",
+      "risk_notes": [
+        "Super-repo nesmí začít trackovat obsah nested repa ani gitlink pointer.",
+        "Scanner ledgerů nesmí procházet build/cache/runtime složky.",
+        "Starší TODO tasky bez Mission Control plánů se mají nejdřív zviditelnit, ne potichu přepsat."
+      ],
+      "acceptance_criteria": [
+        "Launchpad objeví Mission Control z root-level manifest slotu.",
+        "Work board API vrací TODO/DONE/ISSUES sloupce.",
+        "UI ukazuje planning coverage a odkazy na plány.",
+        "Build, registry testy a workspace task validace projdou."
+      ],
+      "links": [
+        {
+          "label": "Mission Control plan",
+          "path": "mission-control/plans/2026/05/mission-control-root-repo-work-board.yaml"
+        },
+        {
+          "label": "Work board scanner",
+          "path": "mission-control/app/v1/src/work-board.ts"
+        },
+        {
+          "label": "Launchpad registry",
+          "path": "launchpad/app/v1/core/apps/registry.ts"
+        }
+      ],
+      "planning": {
+        "plan_id": "plan-2026-05-23-011",
+        "path": "mission-control/plans/2026/05/mission-control-root-repo-work-board.yaml",
+        "source": "mission-control",
+        "role": "planning_source"
+      },
+      "source": "mission-control"
+    }
+  ]
+}

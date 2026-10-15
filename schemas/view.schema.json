@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "agentmint.mission_control.view.v1",
+  "title": "Mission Control view (saved filter)",
+  "description": "Saved filter over an entity collection. Never materializes data; computed at read time from filters.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "id",
+    "name",
+    "entity_type",
+    "created_at",
+    "updated_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "agentmint.mission_control.view.v1"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^view-[a-z][a-z0-9-]*$"
+    },
+    "name": { "type": "string", "minLength": 1 },
+    "description": { "type": "string" },
+    "owner": { "type": "string" },
+    "entity_type": {
+      "enum": [
+        "issue",
+        "project",
+        "initiative",
+        "triage_item",
+        "cycle",
+        "update"
+      ]
+    },
+    "filters": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["field", "operator", "value"],
+        "properties": {
+          "field": { "type": "string", "minLength": 1 },
+          "operator": {
+            "enum": [
+              "eq",
+              "neq",
+              "in",
+              "not_in",
+              "contains",
+              "starts_with",
+              "exists",
+              "missing"
+            ]
+          },
+          "value": {}
+        },
+        "additionalProperties": false
+      }
+    },
+    "group_by": { "type": "string" },
+    "sort": {
+      "type": "object",
+      "required": ["field"],
+      "properties": {
+        "field": { "type": "string", "minLength": 1 },
+        "direction": { "enum": ["asc", "desc"] }
+      },
+      "additionalProperties": false
+    },
+    "display": {
+      "enum": ["list", "board", "timeline"]
+    },
+    "created_at": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+    "updated_at": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+    "links": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["label"],
+        "properties": {
+          "label": { "type": "string", "minLength": 1 },
+          "path": { "type": "string", "minLength": 1 },
+          "url": { "type": "string", "minLength": 1 }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": true
+}
