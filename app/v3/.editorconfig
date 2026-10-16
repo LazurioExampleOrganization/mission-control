@@ -1,0 +1,12 @@
+# Biome v app/v2 vynucuje taby, root .editorconfig mezery; tenhle soubor
+# drží editor v souladu s biome.json pro TS/TSX/JS zdroje aplikace.
+[*]
+indent_style = tab
+
+[*.json]
+indent_style = space
+indent_size = 2
+
+[*.md]
+indent_style = space
+indent_size = 2

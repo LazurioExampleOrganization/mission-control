@@ -1,0 +1,28 @@
+[
+  {
+    "id": "task-2026-01-01-001",
+    "title": "Keep template close blocker open",
+    "status": "open",
+    "priority": "medium",
+    "dev_code": "DEV-0002",
+    "summary": "Keep one generic open TODO linked to DEV-0002 so the reusable app can test close-blocker behavior without Organization-specific task history.",
+    "priority_reason": "Keep the generic close-gate fixture active.",
+    "tags": [
+      "DEV-0002",
+      "mission-control-template"
+    ],
+    "source": "mission-control",
+    "acceptance_criteria": [
+      "Work-board close gate reports this task as open."
+    ],
+    "risk_notes": [
+      "This is a fixture, not a real operational task."
+    ],
+    "planning": {
+      "source": "mission-control",
+      "plan_id": "mcplan-dev-0002",
+      "dev_code": "DEV-0002",
+      "path": "data/mission-control/plans/2026/01/DEV-0002-template-close-blocker.yaml"
+    }
+  }
+]

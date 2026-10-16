@@ -1,0 +1,283 @@
+/*
+ * Reusable Lazurio default theme for Mission Control.
+ *
+ * Canonical source: the Lazurio design system (tokens.css and components.css).
+ * This file is a portable consumer snapshot,
+ * not a second design-system authority. Organization forks may add narrowly
+ * scoped overrides after this layer without changing the shared baseline.
+ */
+
+:root {
+	color-scheme: light;
+
+	/* Lazurio interface palette */
+	--lz-white: #ffffff;
+	--lz-gray-25: #fbfaf9;
+	--lz-gray-50: #f5f4f3;
+	--lz-gray-100: #ecebea;
+	--lz-gray-200: #dddcdb;
+	--lz-gray-300: #c3c2c1;
+	--lz-gray-400: #999999;
+	--lz-gray-500: #707070;
+	--lz-gray-600: #515151;
+	--lz-gray-700: #3d3d3d;
+	--lz-gray-800: #262626;
+	--lz-gray-900: #171717;
+	--lz-gray-950: #090909;
+	--lz-blue-50: #ebf1fe;
+	--lz-blue-100: #d2ddfd;
+	--lz-blue-200: #a8b9fb;
+	--lz-blue-300: #7083f7;
+	--lz-blue-400: #3a48ef;
+	--lz-blue-500: #0d12db;
+	--lz-blue-600: #0b0eb4;
+	--lz-blue-700: #0b0e91;
+	--lz-blue-800: #0c0d72;
+	--lz-blue-900: #0c0c53;
+
+	/* Lazurio semantic signals */
+	--lz-danger: #a61e19;
+	--lz-danger-bg: #f9f4f4;
+	--lz-warning: #876612;
+	--lz-warning-bg: #f9f7f3;
+	--lz-success: #1e7b49;
+	--lz-success-bg: #f4f8f6;
+	--lz-info: #0b0e91;
+	--lz-info-bg: #ebf1fe;
+
+	/* Typography and shape */
+	--lz-font-sans: "Inter Tight Variable", "Inter Tight", Inter, system-ui, sans-serif;
+	--lz-font-mono: "Geist Mono", ui-monospace, monospace;
+	--lz-radius-xs: 3px;
+	--lz-radius-sm: 6px;
+	--lz-radius-md: 10px;
+	--lz-grid-step: 64px;
+	--lz-grid-visible-step: 128px;
+
+	/* Map reusable Mission Control roles onto the Lazurio contract. */
+	--cac-paper: var(--lz-gray-25);
+	--cac-surface: var(--lz-white);
+	--cac-surface-raised: var(--lz-gray-50);
+	--cac-ink: var(--lz-gray-950);
+	--cac-ink-muted: var(--lz-gray-500);
+	--cac-ink-faint: var(--lz-gray-500);
+	--cac-line: var(--lz-gray-200);
+	--cac-line-strong: var(--lz-gray-300);
+	--cac-primary: var(--lz-blue-500);
+	--cac-primary-strong: var(--lz-blue-600);
+	--cac-primary-soft: var(--lz-blue-50);
+	--cac-on-primary: var(--lz-white);
+	--cac-teal-50: var(--lz-blue-50);
+	--cac-teal-100: var(--lz-blue-100);
+	--cac-teal-200: var(--lz-blue-200);
+	--cac-teal-400: var(--lz-blue-400);
+	--cac-teal-600: var(--lz-blue-600);
+	--cac-teal-800: var(--lz-blue-800);
+	--cac-teal-900: var(--lz-blue-900);
+	--cac-indigo-50: var(--lz-blue-50);
+	--cac-indigo-100: var(--lz-blue-100);
+	--cac-indigo-200: var(--lz-blue-200);
+	--cac-indigo-400: var(--lz-blue-400);
+	--cac-indigo-600: var(--lz-blue-600);
+	--cac-indigo-800: var(--lz-blue-800);
+	--cac-indigo-900: var(--lz-blue-900);
+	--cac-coral-50: var(--lz-gray-50);
+	--cac-coral-100: var(--lz-gray-100);
+	--cac-coral-200: var(--lz-gray-200);
+	--cac-coral-400: var(--lz-gray-500);
+	--cac-coral-600: var(--lz-gray-700);
+	--cac-coral-800: var(--lz-gray-900);
+	--cac-success-bg: var(--lz-success-bg);
+	--cac-success-fg: var(--lz-success);
+	--cac-info-bg: var(--lz-info-bg);
+	--cac-info-fg: var(--lz-info);
+	--cac-warning-bg: var(--lz-warning-bg);
+	--cac-warning-fg: var(--lz-warning);
+	--cac-danger-bg: var(--lz-danger-bg);
+	--cac-danger-fg: var(--lz-danger);
+	--cac-font-sans: var(--lz-font-sans);
+	--cac-font-mono: var(--lz-font-mono);
+	--cac-radius-md: var(--lz-radius-sm);
+	--cac-radius-lg: var(--lz-radius-md);
+
+	--mc-shadow-sm: none;
+	--mc-shadow-md: none;
+	--mc-shadow-lg: 0 16px 48px rgb(9 9 9 / 10%);
+}
+
+body {
+	background-color: var(--lz-gray-25);
+	font-size: 16.5px;
+	letter-spacing: 0;
+}
+
+.sidebar {
+	background: rgb(255 255 255 / 94%);
+	backdrop-filter: blur(18px);
+}
+
+.sidebar-header {
+	display: grid;
+	gap: 2px;
+}
+
+.sidebar-title,
+.page-title {
+	background: none;
+	color: var(--lz-gray-950);
+	-webkit-text-fill-color: currentColor;
+	font-weight: 600;
+	letter-spacing: -0.035em;
+}
+
+.sidebar-context {
+	color: var(--lz-gray-500);
+	font-size: 0.78rem;
+	font-weight: 400;
+	line-height: 1.3;
+}
+
+.sidebar-section-header,
+.version-badge,
+.draft-status-badge,
+.draft-status-facts dt,
+.summary-card span,
+.panel-section h3,
+.agent-lane-card span,
+.status-badge,
+.priority-badge,
+.field label,
+.read-only-banner strong,
+.section-kicker,
+.roadmap-reference-row > strong {
+	text-transform: none;
+	letter-spacing: -0.005em;
+	font-weight: 600;
+}
+
+.sidebar-section-header {
+	border-bottom: 0;
+	font-size: 0.74rem;
+	font-weight: 500;
+}
+
+.sidebar-item {
+	font-weight: 400;
+}
+
+.sidebar-item.active {
+	box-shadow: inset 3px 0 0 var(--lz-blue-500);
+	font-weight: 500;
+}
+
+.content-area {
+	position: relative;
+	isolation: isolate;
+	width: min(100%, 1440px);
+	/* Fluid frame: narrow windows keep their width for content, not padding. */
+	padding: clamp(24px, 5vw, 48px) clamp(16px, 4vw, 64px) clamp(48px, 10vw, 96px);
+	background: var(--lz-white);
+}
+
+.page-title {
+	font-size: clamp(1.75rem, 1.2rem + 2.4vw, 3.25rem);
+	line-height: 1.02;
+}
+
+.page-subtitle {
+	max-width: 62ch;
+	font-size: 1.05rem;
+	line-height: 1.55;
+}
+
+.panel,
+.summary-card,
+.plan-card,
+.roadmap-card,
+.roadmap-step-card,
+.roadmap-priority-card,
+.agent-lane-card,
+.work-item-card {
+	box-shadow: none;
+}
+
+.panel,
+.summary-card,
+.agent-lane-card {
+	border-color: var(--lz-gray-200);
+}
+
+.button.primary {
+	border-color: var(--lz-gray-950);
+	background: var(--lz-gray-950);
+	color: var(--lz-white);
+}
+
+.button.primary:hover:not(:disabled) {
+	border-color: var(--lz-gray-800);
+	background: var(--lz-gray-800);
+}
+
+.version-badge,
+.draft-status-badge {
+	box-shadow: none;
+	letter-spacing: -0.005em;
+	font-weight: 600;
+}
+
+.version-badge {
+	border-color: var(--lz-gray-950);
+	background: var(--lz-gray-950);
+	color: var(--lz-white);
+}
+
+.status-badge,
+.priority-badge {
+	letter-spacing: -0.005em;
+	font-weight: 600;
+}
+
+/* Status stays legible without color: symbol + written label. */
+.status-badge::before {
+	content: "•";
+	margin-right: 5px;
+	font-size: 0.95em;
+}
+
+.status-badge:is(.ready, .done, .approved)::before {
+	content: "✓";
+}
+
+.status-badge:is(.in_progress, .running)::before {
+	content: "◐";
+}
+
+.status-badge:is(.review, .pending, .shaping)::before {
+	content: "◇";
+}
+
+.status-badge:is(.blocked, .blocker, .error, .failed)::before {
+	content: "!";
+	font-weight: 700;
+}
+
+.status-badge:is(.archived, .closed)::before {
+	content: "—";
+}
+
+a,
+.button.ghost,
+.draft-status-actions .button.ghost {
+	color: var(--lz-blue-600);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		scroll-behavior: auto !important;
+		transition-duration: 0.01ms !important;
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+	}
+}

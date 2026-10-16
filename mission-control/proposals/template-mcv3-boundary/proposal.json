@@ -1,0 +1,20 @@
+{
+  "schema_version": "companiesascode.mission_control.proposal.v1",
+  "id": "prop-2026-01-01-001",
+  "slug": "template-mcv3-boundary",
+  "title": "Template Mission Control v3 boundary",
+  "status": "draft",
+  "owner": "template-steward",
+  "created_at": "2026-01-01",
+  "updated_at": "2026-01-01",
+  "summary": "Offline proposal fixture for the generic Mission Control app/code boundary.",
+  "wireframe": "index.html",
+  "dev_code": "DEV-0001",
+  "design_notes": "NOTES.md",
+  "links": [
+    {
+      "label": "DEV-0001 plan",
+      "path": "templates/organization-data/data/mission-control/plans/2026/01/DEV-0001-template-runtime.yaml"
+    }
+  ]
+}

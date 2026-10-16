@@ -1,0 +1,13 @@
+{
+  "schema_version": "companiesascode.mission_control.config.v1",
+  "plan_prefix": "DEV",
+  "plans_dir": "templates/organization-data/data/mission-control/plans",
+  "schema_path": "schemas/mission-control-plan.schema.json",
+  "roadmaps_dir": "templates/organization-data/data/mission-control/roadmaps",
+  "roadmap_schema_path": "schemas/mission-control-roadmap.schema.json",
+  "organization_admin": "template-steward",
+  "notes": [
+    "Generic local development config for the Mission Control app/code repo.",
+    "When this repo is Doctor-mounted at <Org>/mission-control, the runtime reads <Org>/mission-control/mission-control.config.json instead."
+  ]
+}

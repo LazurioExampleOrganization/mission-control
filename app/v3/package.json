@@ -1,0 +1,82 @@
+{
+  "name": "@lazurioexampleorganization/mission-control-v3",
+  "version": "0.3.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "bun@1.4.2",
+  "scripts": {
+    "dev": "bun run src/server.ts",
+    "dev:client": "bun ./node_modules/vite/bin/vite.js build --watch --mode development",
+    "build": "tsc -b && bun run prepare:app",
+    "prepare:app": "bun ./node_modules/vite/bin/vite.js build",
+    "check:prepared": "bun run src/prepared.ts",
+    "typecheck": "tsc -b --noEmit",
+    "lint": "biome check .",
+    "format": "biome check --write .",
+    "check": "bun run typecheck && bun run lint",
+    "validate": "bun run src/validate-cli.ts",
+    "export": "bun run src/export-todo.ts",
+    "agent-work": "bun run src/agent-work-cli.ts",
+    "next-dev-code": "bun run src/dev-code.ts",
+    "create-plan": "bun run src/create-plan.ts",
+    "plan": "bun run src/plan-cli.ts",
+    "test": "bun test --timeout 60000 tests"
+  },
+  "dependencies": {
+    "@fontsource-variable/inter-tight": "^5.3.0",
+    "@fontsource/geist-mono": "^5.3.0",
+    "@lazurio/module-kit": "github:Lazurio/module-kit#v0.2.0",
+    "ajv": "^8.20.0",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "yaml": "^2.9.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.4.15",
+    "@types/bun": "^1.3.14",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.0",
+    "typescript": "^5.8.3",
+    "vite": "^8.0.0"
+  },
+  "lazurio": {
+    "runtime": {
+      "schema_version": "lazurio.runtime.v1",
+      "id": "lazurioexampleorganization-mission-control-v3",
+      "title": "Mission Control v3",
+      "company": "LazurioExampleOrganization",
+      "module": "mission-control",
+      "surface": "internal",
+      "dev_script": "dev",
+      "build_script": "build",
+      "required_module_slots": [
+        "mission-control/db"
+      ],
+      "tags": [
+        "mission-control",
+        "planning",
+        "gen3",
+        "repository-db"
+      ],
+      "listeners": [
+        {
+          "id": "web",
+          "role": "entrypoint",
+          "lease": "main",
+          "protocol": "http",
+          "health": {
+            "kind": "http",
+            "path": "/"
+          }
+        }
+      ]
+    },
+    "preparation": {
+      "schema_version": "lazurio.preparation.v1",
+      "owner_package": "app/v3/package.json",
+      "prepare_script": "prepare:app",
+      "check_script": "check:prepared"
+    }
+  }
+}

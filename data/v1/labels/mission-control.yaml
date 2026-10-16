@@ -1,9 +1,0 @@
-schema_version: agentmint.mission_control.label.v1
-id: label-mission-control
-name: mission-control
-description: Práce na samotném Mission Controlu (plánovací vrstva, aplikace, schémata, databáze).
-color: "#2563eb"
-team_id: team-agentmint
-created_at: 2026-05-23
-updated_at: 2026-05-23
-links: []

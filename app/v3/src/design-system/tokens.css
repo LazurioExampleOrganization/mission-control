@@ -1,0 +1,102 @@
+/*
+ * Mission Control default design tokens v1
+ * Identita: Blueprint ink & paper.
+ * Default fallback tokens bundled with the reusable Mission Control app/code repo.
+ * Odvozeno ze seed proposalu gen3-konglomerat-designer: papírový podklad,
+ * inkoustový text, teal pro strukturu, indigo pro lidi a plány, korálová
+ * pro AI vrstvu.
+ *
+ * Pravidla použití drží design-system/README.md. Aplikace tokeny importují;
+ * offline wireframy v mission-control/proposals/ hodnoty kopírují.
+ */
+
+:root {
+	/* Papír a inkoust - základní povrchy a text */
+	--cac-paper: #f4f3ef;
+	--cac-surface: #ffffff;
+	--cac-surface-raised: #fbfaf7;
+	--cac-ink: #1f1f1d;
+	--cac-ink-muted: #5f5e5a;
+	/* Faint je pořád textová role: AA kontrast na papíru i bílém povrchu */
+	--cac-ink-faint: #6e6d68;
+	--cac-line: #e3e1da;
+	--cac-line-strong: #c9c7bf;
+
+	/* Teal - primární brand ramp (struktura, akce, Lazurio) */
+	--cac-teal-50: #e1f5ee;
+	--cac-teal-100: #9fe1cb;
+	--cac-teal-200: #5dcaa5;
+	--cac-teal-400: #1d9e75;
+	--cac-teal-600: #0f6e56;
+	--cac-teal-800: #085041;
+	--cac-teal-900: #04342c;
+
+	/* Indigo - sekundární ramp (lidé, plány, roadmapa) */
+	--cac-indigo-50: #eeedfe;
+	--cac-indigo-100: #cecbf6;
+	--cac-indigo-200: #afa9ec;
+	--cac-indigo-400: #7f77dd;
+	--cac-indigo-600: #534ab7;
+	--cac-indigo-800: #3c3489;
+	--cac-indigo-900: #26215c;
+
+	/* Coral - akcentní ramp (AI vrstva, zvýraznění) */
+	--cac-coral-50: #faece7;
+	--cac-coral-100: #f5c4b3;
+	--cac-coral-200: #f0997b;
+	--cac-coral-400: #d85a30;
+	--cac-coral-600: #993c1d;
+	--cac-coral-800: #712b13;
+
+	/* Role: primární akce a odkazy */
+	--cac-primary: var(--cac-teal-600);
+	--cac-primary-strong: var(--cac-teal-800);
+	--cac-primary-soft: var(--cac-teal-50);
+	--cac-on-primary: #ffffff;
+
+	/* Sémantické stavy */
+	--cac-success-bg: var(--cac-teal-50);
+	--cac-success-fg: var(--cac-teal-800);
+	--cac-info-bg: #e6f1fb;
+	--cac-info-fg: #185fa5;
+	--cac-warning-bg: #faeeda;
+	--cac-warning-fg: #854f0b;
+	--cac-danger-bg: #fcebeb;
+	--cac-danger-fg: #a32d2d;
+
+	/* Typografie */
+	--cac-font-sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+	--cac-font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+	/* Tvar */
+	--cac-radius-md: 8px;
+	--cac-radius-lg: 12px;
+	--cac-border-width: 1px;
+}
+
+@media (prefers-color-scheme: dark) {
+	:root {
+		--cac-paper: #191917;
+		--cac-surface: #222220;
+		--cac-surface-raised: #262623;
+		--cac-ink: #f0efea;
+		--cac-ink-muted: #b4b2a9;
+		--cac-ink-faint: #8a8984;
+		--cac-line: #3a3937;
+		--cac-line-strong: #54534e;
+
+		--cac-primary: var(--cac-teal-200);
+		--cac-primary-strong: var(--cac-teal-100);
+		--cac-primary-soft: #0c3a2e;
+		--cac-on-primary: #04342c;
+
+		--cac-success-bg: #0c3a2e;
+		--cac-success-fg: var(--cac-teal-100);
+		--cac-info-bg: #0c2c47;
+		--cac-info-fg: #85b7eb;
+		--cac-warning-bg: #3b2a10;
+		--cac-warning-fg: #fac775;
+		--cac-danger-bg: #401616;
+		--cac-danger-fg: #f09595;
+	}
+}

@@ -1,9 +1,0 @@
-schema_version: agentmint.mission_control.label.v1
-id: label-research
-name: výzkum
-description: Sken mechanismů, tržní evidence, longlist nebo shortlist výzkum.
-color: "#7c3aed"
-team_id: team-agentmint
-created_at: 2026-05-23
-updated_at: 2026-05-23
-links: []

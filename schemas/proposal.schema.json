@@ -1,0 +1,118 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "companiesascode.mission_control.proposal.v1",
+  "title": "Mission Control proposal metadata",
+  "description": "Metadata jednoho design proposalu v mission-control/proposals/<slug>/proposal.json. Wireframe je self-contained offline HTML; kontrakt drží mission-control/proposals/README.md.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "id",
+    "slug",
+    "title",
+    "status",
+    "owner",
+    "created_at",
+    "updated_at",
+    "summary",
+    "wireframe"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "companiesascode.mission_control.proposal.v1"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^prop-[0-9]{4}-[0-9]{2}-[0-9]{2}-[0-9]{3}$"
+    },
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$",
+      "description": "Musí odpovídat názvu složky proposalu."
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "enum": [
+        "draft",
+        "discussion",
+        "accepted",
+        "implemented",
+        "rejected",
+        "archived"
+      ]
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 1
+    },
+    "created_at": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+    },
+    "updated_at": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1
+    },
+    "wireframe": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Relativní cesta k self-contained HTML wireframu uvnitř složky proposalu, typicky index.html."
+    },
+    "dev_code": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[A-Z]{2,6}-[0-9]{4}$",
+      "description": "Kód Mission Control plánu, který proposal implementuje. Povinný pro status accepted a implemented."
+    },
+    "design_notes": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Relativní cesta k diskuznímu logu uvnitř složky proposalu, typicky NOTES.md."
+    },
+    "links": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "label"
+        ],
+        "anyOf": [
+          {
+            "required": [
+              "path"
+            ]
+          },
+          {
+            "required": [
+              "url"
+            ]
+          }
+        ],
+        "properties": {
+          "label": {
+            "type": "string",
+            "minLength": 1
+          },
+          "path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "url": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

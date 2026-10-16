@@ -1,0 +1,5 @@
+# Keep every text file LF on every platform so Windows checkouts with
+# core.autocrlf=true do not alter YAML fixtures, .gitkeep markers or
+# pinned validator copies (digests, freeze checks and YAML tests depend on it).
+* text=auto eol=lf
+templates/organization-data/scripts/validate-mission-control-data.mjs text eol=lf

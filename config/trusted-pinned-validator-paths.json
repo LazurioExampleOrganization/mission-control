@@ -1,0 +1,6 @@
+{
+  "schema_version": "companiesascode.mission_control.pinned_validator_paths.v1",
+  "trusted_validator_paths": [
+    "templates/organization-data/scripts/validate-mission-control-data.mjs"
+  ]
+}

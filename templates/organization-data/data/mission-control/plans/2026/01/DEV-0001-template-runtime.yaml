@@ -1,0 +1,50 @@
+schema_version: companiesascode.mission_control.plan.v2
+id: mcplan-dev-0001
+dev_code: DEV-0001
+title: Template runtime fixture
+status: ready
+owner: template-steward
+priority: high
+priority_rank: 1
+created_at: 2026-01-01
+updated_at: 2026-01-01
+context: >-
+  Generic Mission Control runtime fixture for validating the reusable app/code
+  repository without Organization-specific roadmap data.
+current_problem: >-
+  The code repository needs a small, non-company fixture so validators, CLI
+  helpers and TODO export behavior can run outside a mounted Organization.
+target_state: >-
+  The template repository exposes a valid plan that exercises schema, quality,
+  TODO export and read-only runtime surfaces without carrying real company work.
+scope:
+  in:
+    - Keep one generic DEV plan available for code-repo validation.
+    - Exercise proposed task export against a template data ledger.
+  out:
+    - Store real Organization roadmap, issue or TODO history in the app/code repo.
+    - Claim that template fixtures are canonical business truth.
+acceptance_criteria:
+  - The generic plan validates against mission-control-plan.schema.json.
+  - TODO export can build a proposal from the generic proposed task.
+validation:
+  - bun run check
+risk_notes:
+  - Template fixtures must remain visibly generic and replaceable in Organization data repos.
+planning_target:
+  scope: template-organization
+  todo_tasks_path: data/mission-control/TODO.tasks.json
+proposed_tasks:
+  - id: task-2026-01-01-002
+    title: Validate generic Mission Control template runtime
+    summary: >-
+      Run the reusable Mission Control app/code checks against template-only data
+      before mounting the app in an Organization workspace.
+    priority: medium
+    tags:
+      - DEV-0001
+      - mission-control-template
+    acceptance_criteria:
+      - Template checks and app validation pass on a standalone checkout.
+    risk_notes:
+      - Do not copy Organization secrets or business data into this fixture.

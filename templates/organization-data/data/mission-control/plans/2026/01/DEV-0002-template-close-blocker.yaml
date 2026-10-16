@@ -1,0 +1,49 @@
+schema_version: companiesascode.mission_control.plan.v2
+id: mcplan-dev-0002
+dev_code: DEV-0002
+title: Template close blocker fixture
+status: in_progress
+owner: template-steward
+priority: medium
+priority_rank: 2
+created_at: 2026-01-01
+updated_at: 2026-01-01
+context: >-
+  Generic close-blocker fixture for testing that Mission Control refuses to close
+  a plan while linked TODO output remains open.
+current_problem: >-
+  The reusable app needs a non-company open TODO fixture to test close gates.
+target_state: >-
+  The fixture plan stays in progress while its linked template TODO remains open.
+scope:
+  in:
+    - Link a generic open TODO task through todo_outputs.
+    - Keep the task in the template data ledger only.
+  out:
+    - Represent any real Organization, maintainer or customer work.
+acceptance_criteria:
+  - Work-board close gate reports the linked open TODO task.
+validation:
+  - bun run test
+risk_notes:
+  - This fixture is intentionally generic and not a durable task log.
+planning_target:
+  scope: template-organization
+  todo_tasks_path: data/mission-control/TODO.tasks.json
+todo_outputs:
+  - task-2026-01-01-001
+proposed_tasks:
+  - id: task-2026-01-01-001
+    title: Keep template close blocker open
+    summary: >-
+      Keep one generic open TODO linked to DEV-0002 so the reusable app can test
+      close-blocker behavior without Organization-specific task history.
+    priority_reason: Keep the generic close-gate fixture active.
+    priority: medium
+    tags:
+      - DEV-0002
+      - mission-control-template
+    acceptance_criteria:
+      - Work-board close gate reports this task as open.
+    risk_notes:
+      - This is a fixture, not a real operational task.

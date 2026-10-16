@@ -1,0 +1,59 @@
+{
+  "name": "lazurioexampleorganization-mission-control",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "bun@1.4.2",
+  "description": "Lazurio Mission Control: plans, tasks and roadmaps of a Lazurio Organization, over a repository-db data repo.",
+  "companyascode": {
+    "mission_control": {
+      "schema_version": "companiesascode.mission_control.instance.v1",
+      "mode": "organization",
+      "organization": {
+        "slug": "LazurioExampleOrganization",
+        "display_name": "Lazurio Example Organization"
+      }
+    }
+  },
+  "scripts": {
+    "check": "node scripts/check-template.mjs && bun run app:validate && bun run app:check",
+    "test": "bun run check && node --test scripts/check-template.test.mjs scripts/run-v3.test.mjs src/mission-control-data-adapter.test.mjs src/mission-control-publish-flow.test.mjs test-support/native-git.test.mjs test-support/local-ssh-git.test.mjs && bun test test-support/bun-package-execution.test.mjs && bun run app:test",
+    "build": "bun run app:build",
+    "typecheck": "bun run app:typecheck",
+    "validate": "bun run app:validate",
+    "export": "node scripts/run-v3.mjs export",
+    "agent-work": "node scripts/run-v3.mjs agent-work",
+    "next-dev-code": "node scripts/run-v3.mjs next-dev-code",
+    "create-plan": "node scripts/run-v3.mjs create-plan",
+    "plan": "node scripts/run-v3.mjs plan",
+    "app:build": "node scripts/run-v3.mjs build",
+    "app:typecheck": "node scripts/run-v3.mjs typecheck",
+    "app:check": "node scripts/run-v3.mjs check",
+    "app:validate": "node scripts/run-v3.mjs validate",
+    "app:test": "node scripts/run-v3.mjs test",
+    "check:ci": "node scripts/check-template.mjs && node scripts/run-v3.mjs validate-fixtures && bun run app:check",
+    "test:ci": "bun run check:ci && node --test scripts/check-template.test.mjs scripts/run-v3.test.mjs src/mission-control-data-adapter.test.mjs src/mission-control-publish-flow.test.mjs test-support/native-git.test.mjs test-support/local-ssh-git.test.mjs && bun test test-support/bun-package-execution.test.mjs && bun run app:test"
+  },
+  "dependencies": {
+    "ajv": "^8.20.0",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "yaml": "^2.9.0"
+  },
+  "license": "MIT",
+  "keywords": [
+    "mission-control",
+    "companiesascode",
+    "lazurio",
+    "repository-db"
+  ],
+  "devDependencies": {
+    "@biomejs/biome": "^2.4.7",
+    "@types/bun": "^1.3.14",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.0",
+    "typescript": "^5.8.3",
+    "vite": "^8.0.0"
+  }
+}

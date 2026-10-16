@@ -1,0 +1,154 @@
+import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { dirname, extname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const srcDir = dirname(fileURLToPath(import.meta.url));
+const appDir = resolve(srcDir, "..");
+const missionControlDir = resolve(appDir, "../..");
+const organizationRoot = resolve(missionControlDir, "..");
+const packageJsonPath = join(appDir, "package.json");
+
+const packageJson = readJson(packageJsonPath, {} as any);
+const appManifest = packageJson?.lazurio?.runtime ?? {};
+const moduleManifest = readJson<any>(join(missionControlDir, "lazurio.module.json"), {});
+const leases = moduleManifest?.port_leases;
+const mainLease = Array.isArray(leases)
+  ? leases.find((lease) => lease?.id === "main")
+  : null;
+const port = Number(process.env.LAZURIO_RUNTIME_LISTENER_WEB_PORT);
+const host = process.env.LAZURIO_RUNTIME_LISTENER_WEB_HOST;
+if (
+  !mainLease ||
+  leases.length !== 1 ||
+  !Number.isInteger(port) ||
+  port < 1024 ||
+  port > 65535 ||
+  !host ||
+  host !== mainLease.host ||
+  port !== mainLease.port
+) {
+  throw new Error("Launchpad must inject the exact module-owned main lease.");
+}
+
+function readJson<T>(path: string, fallback: T): T {
+  try {
+    return JSON.parse(readFileSync(path, "utf8")) as T;
+  } catch {
+    return fallback;
+  }
+}
+
+function readText(path: string): string {
+  try {
+    return readFileSync(path, "utf8");
+  } catch {
+    return "";
+  }
+}
+
+function escapeHtml(value: unknown): string {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function listPlans() {
+  const plansDir = join(missionControlDir, "plans");
+  if (!existsSync(plansDir)) return [];
+  return readdirSync(plansDir, { withFileTypes: true })
+    .filter((entry) => entry.isFile() && [".md", ".markdown"].includes(extname(entry.name).toLowerCase()))
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map((entry) => {
+      const path = join(plansDir, entry.name);
+      const content = readText(path);
+      return {
+        title: content.match(/^#\s+(.+)$/m)?.[1]?.trim() ?? entry.name,
+        relativePath: `mission-control/plans/${entry.name}`,
+        checked: (content.match(/^- \[x\]/gim) ?? []).length,
+        unchecked: (content.match(/^- \[ \]/gim) ?? []).length,
+      };
+    });
+}
+
+function loadModel() {
+  const company = readJson<any>(join(organizationRoot, "company.gen3.json"), {});
+  const modules = readJson<any>(join(organizationRoot, "modules.manifest.json"), {});
+  const todos = readJson<{ tasks?: any[] }>(join(organizationRoot, "TODO.tasks.json"), { tasks: [] });
+  const done = readJson<{ tasks?: any[] }>(join(organizationRoot, "DONE.tasks.json"), { tasks: [] });
+  const issues = readJson<{ issues?: any[] }>(join(organizationRoot, "ISSUES.open.json"), { issues: [] });
+  const tasks = todos.tasks ?? [];
+  const activeTasks = tasks.filter((task) => !["done", "completed", "closed"].includes((task.status ?? "").toLowerCase()));
+  return {
+    generatedAt: new Date().toISOString(),
+    manifest: appManifest,
+    organizationRoot,
+    company,
+    modules,
+    plans: listPlans(),
+    activeTasks,
+    completedTasks: [
+      ...tasks.filter((task) => ["done", "completed", "closed"].includes((task.status ?? "").toLowerCase())),
+      ...(done.tasks ?? []),
+    ],
+    openIssues: issues.issues ?? [],
+  };
+}
+
+function renderPage() {
+  const model = loadModel();
+  const company = model.company?.company ?? {};
+  const title = company.display_name ?? appManifest.title ?? "Mission Control";
+  const activeModules = model.modules?.module_slots ?? model.company?.modules ?? [];
+  const plannedModules = model.modules?.planned_phase_2_slots ?? [];
+  const cards = [
+    ["Plans", model.plans.length],
+    ["Active tasks", model.activeTasks.length],
+    ["Open questions", model.openIssues.length],
+    ["Active modules", activeModules.length],
+    ["Planned modules", plannedModules.length],
+  ];
+  return `<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>${escapeHtml(appManifest.title ?? "Mission Control")}</title>
+  <style>
+    body{margin:0;font-family:Inter,ui-sans-serif,system-ui;background:#07111f;color:#edf4ff;line-height:1.55}main{width:min(1080px,calc(100vw - 32px));margin:0 auto;padding:36px 0 56px}.hero,.card{border:1px solid #233a5f;background:#0d1b2f;border-radius:24px;padding:24px}.grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));margin-top:18px}.metric strong{display:block;font-size:2rem}.muted,p,li{color:#9fb2ce}a{color:#78d0ff}code{background:#07111f;border:1px solid #233a5f;border-radius:8px;padding:.12rem .35rem}h1{font-size:clamp(2rem,5vw,4rem);margin:0}.eyebrow{color:#78d0ff;text-transform:uppercase;letter-spacing:.14em;font-size:.78rem;font-weight:800}.section{margin-top:24px}
+  </style>
+</head>
+<body>
+  <main>
+    <section class="hero">
+      <p class="eyebrow">Mission Control · template app</p>
+      <h1>${escapeHtml(title)}</h1>
+      <p>Reusable Launchpad app surface over Organization-owned Mission Control ledgers and plans.</p>
+      <p class="muted">Source of truth: <code>${escapeHtml(model.organizationRoot)}</code></p>
+      <div class="grid">${cards.map(([label, value]) => `<div class="card metric"><strong>${value}</strong><span>${label}</span></div>`).join("")}</div>
+    </section>
+    <section class="section grid">
+      <div class="card"><h2>Plans</h2><ul>${model.plans.map((plan) => `<li>${escapeHtml(plan.title)} — ${plan.checked}/${plan.checked + plan.unchecked} done</li>`).join("") || "<li>No plans yet.</li>"}</ul></div>
+      <div class="card"><h2>Active tasks</h2><ul>${model.activeTasks.map((task) => `<li>${escapeHtml(task.id)} — ${escapeHtml(task.title)}</li>`).join("") || "<li>No active tasks.</li>"}</ul></div>
+      <div class="card"><h2>Open questions</h2><ul>${model.openIssues.map((issue) => `<li>${escapeHtml(issue.id)} — ${escapeHtml(issue.title)}</li>`).join("") || "<li>No open questions.</li>"}</ul></div>
+    </section>
+    <p class="muted">Generated ${escapeHtml(model.generatedAt)} · <a href="/api/status">/api/status</a></p>
+  </main>
+</body>
+</html>`;
+}
+
+Bun.serve({
+  port,
+  hostname: host,
+  fetch(request) {
+    const url = new URL(request.url);
+    if (url.pathname === "/api/status") return Response.json(loadModel());
+    if (url.pathname !== "/" && url.pathname !== "/index.html") return new Response("Not found", { status: 404 });
+    return new Response(renderPage(), { headers: { "content-type": "text/html; charset=utf-8" } });
+  },
+});
+
+console.log(`${appManifest.title ?? "Mission Control"} running at http://${host}:${port}`);

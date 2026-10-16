@@ -1,0 +1,19 @@
+{
+  "schema_version": "lazurio.module.v1",
+  "id": "mission-control",
+  "company": "replace-with-client-slug",
+  "tcp_port_policy": {
+    "mode": "single"
+  },
+  "port_leases": [
+    {
+      "id": "main",
+      "host": "127.0.0.1",
+      "port": 24901
+    }
+  ],
+  "apps": [
+    "package.json"
+  ],
+  "default_app": "package.json"
+}

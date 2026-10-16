@@ -1,0 +1,43 @@
+{
+  "name": "replace-with-client-slug-mission-control",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "bun run src/server.ts",
+    "build": "bun build src/server.ts --target=bun --outdir=.build",
+    "check": "bun build src/server.ts --target=bun --outdir=.build --dry-run"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.0"
+  },
+  "lazurio": {
+    "runtime": {
+      "schema_version": "lazurio.runtime.v1",
+      "id": "replace-with-client-slug-mission-control-v1",
+      "title": "Mission Control",
+      "company": "replace-with-client-slug",
+      "module": "mission-control",
+      "surface": "internal",
+      "dev_script": "dev",
+      "build_script": "build",
+      "tags": [
+        "mission-control",
+        "planning",
+        "first-client"
+      ],
+      "listeners": [
+        {
+          "id": "web",
+          "role": "entrypoint",
+          "lease": "main",
+          "protocol": "http",
+          "health": {
+            "kind": "http",
+            "path": "/"
+          }
+        }
+      ]
+    }
+  }
+}

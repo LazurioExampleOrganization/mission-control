@@ -1,0 +1,54 @@
+schema_version: companiesascode.mission_control.roadmap.v1
+id: mcroadmap-rm-0001
+roadmap_code: RM-0001
+title: Template Mission Control runtime roadmap
+status: in_progress
+owner: template-steward
+priority: high
+created_at: 2026-01-01
+updated_at: 2026-01-01
+source_plan: DEV-0001
+summary: >-
+  Generic roadmap fixture that lets the reusable Mission Control app render
+  Roadmaps, next steps and release gates without Organization-specific data.
+agent_lane:
+  reviewers:
+    - template-steward
+  execution_agents:
+    - template-agent
+  escalation_policy: >-
+    Template fixtures never grant production authority; Organization repos must
+    replace reviewers and escalation policy with local stewards.
+priorities:
+  - id: priority-001
+    title: Template runtime stays portable
+    rank: 1
+    rationale: >-
+      The app/code repo must be testable before it is mounted into any specific Organization.
+steps:
+  - id: step-001
+    title: Keep generic fixture readable
+    status: done
+    executable: true
+    priority_refs:
+      - priority-001
+    plan_refs:
+      - DEV-0001
+    evidence_refs:
+      - label: Template data README
+        kind: doc
+        path: README.md
+    acceptance_criteria:
+      - The generic DEV-0001 plan validates.
+  - id: step-002
+    title: Exercise next-step and close-gate behavior
+    status: ready
+    executable: true
+    priority_refs:
+      - priority-001
+    plan_refs:
+      - DEV-0002
+    todo_refs:
+      - task-2026-01-01-001
+    acceptance_criteria:
+      - Roadmaps API reports this as the next runnable step.
