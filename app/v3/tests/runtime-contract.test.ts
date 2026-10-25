@@ -10,10 +10,13 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { clientDirectory } from '../src/server.ts';
 
 // Lazurio Module Standard start contract (decision 0171): one server process,
 // host and port only from the Launchpad listener environment, the client build
-// as declared preparation.
+// as declared preparation. From `main` the same server is the production start
+// (`start_script`, LazurioPlatform F58 addendum (2), root decision 0195 point
+// 24), handed its client's stored build as LAZURIO_RUNTIME_BUILD_OUTPUT.
 
 const appRoot = resolve(import.meta.dir, '..');
 const appPackage = JSON.parse(readFileSync(resolve(appRoot, 'package.json'), 'utf8'));
@@ -47,12 +50,12 @@ function freePort(): number {
 	return port;
 }
 
-async function waitForPlans(port: number): Promise<Response> {
+async function waitForServer(port: number, path = '/api/plans'): Promise<Response> {
 	const deadline = Date.now() + 30_000;
 	let lastError: unknown = null;
 	while (Date.now() < deadline) {
 		try {
-			return await fetch(`http://127.0.0.1:${port}/api/plans`);
+			return await fetch(`http://127.0.0.1:${port}${path}`);
 		} catch (error) {
 			lastError = error;
 			await Bun.sleep(100);
@@ -63,7 +66,7 @@ async function waitForPlans(port: number): Promise<Response> {
 
 describe('Mission Control runtime contract', () => {
 	test('dev starts one Bun server process and nothing else', () => {
-		expect(appPackage.scripts.dev).toBe('bun run src/server.ts');
+		expect(appPackage.scripts.dev).toBe('bun --no-env-file run src/server.ts');
 		expect(appPackage.lazurio.runtime.dev_script).toBe('dev');
 		expect(appPackage.devDependencies.concurrently).toBeUndefined();
 		expect(appPackage.dependencies.concurrently).toBeUndefined();
@@ -83,6 +86,25 @@ describe('Mission Control runtime contract', () => {
 		for (const lifecycle of ['prepare', 'preinstall', 'install', 'postinstall', 'prepack']) {
 			expect(appPackage.scripts[lifecycle]).toBeUndefined();
 		}
+	});
+
+	test('starts from main as its own one-process server with the client as its build', () => {
+		const runtime = appPackage.lazurio.runtime;
+		// The development server already is the production server: one Bun
+		// process that serves a prebuilt client, nothing development-only.
+		expect(runtime.start_script).toBe('dev');
+		expect(appPackage.scripts[runtime.start_script]).toBe('bun --no-env-file run src/server.ts');
+		// The build is the client only; the server runs from the checkout.
+		expect(runtime.build_script).toBe('prepare:app');
+		expect(runtime.build_output).toBe('dist');
+		expect(runtime.static_fallback).toBeUndefined();
+	});
+
+	test('serves its client from LAZURIO_RUNTIME_BUILD_OUTPUT when set, else from ./dist', () => {
+		const output = resolve(tmpdir(), 'mission-control-build-output');
+		expect(clientDirectory({ LAZURIO_RUNTIME_BUILD_OUTPUT: output })).toBe(output);
+		expect(clientDirectory({})).toBe(resolve(appRoot, 'dist'));
+		expect(clientDirectory({ LAZURIO_RUNTIME_BUILD_OUTPUT: '' })).toBe(resolve(appRoot, 'dist'));
 	});
 
 	test('reads its listener only through module-kit, never from the lease file', () => {
@@ -154,12 +176,40 @@ describe('Mission Control runtime contract', () => {
 			stderr: 'pipe',
 		});
 		try {
-			const response = await waitForPlans(port);
+			const response = await waitForServer(port);
 			expect(response.status).toBe(200);
 			expect(Array.isArray(((await response.json()) as { records?: unknown }).records)).toBe(true);
 		} finally {
 			server.kill();
 			await server.exited;
+		}
+	});
+
+	test('a production start serves the handed build output and the API', async () => {
+		const output = mkdtempSync(join(tmpdir(), 'mission-control-build-output-'));
+		writeFileSync(join(output, 'index.html'), '<!doctype html><title>fixture build output</title>');
+		// The declared start script's command, as the Platform starts it from
+		// `main`: in production mode with the stored client output.
+		const [bun, ...args] = appPackage.scripts[appPackage.lazurio.runtime.start_script].split(' ');
+		expect(bun).toBe('bun');
+		const port = freePort();
+		const server = Bun.spawn([process.execPath, ...args], {
+			cwd: appRoot,
+			env: { ...listenerEnv(port), NODE_ENV: 'production', LAZURIO_RUNTIME_BUILD_OUTPUT: output },
+			stdout: 'pipe',
+			stderr: 'pipe',
+		});
+		try {
+			const health = await waitForServer(port, appPackage.lazurio.runtime.listeners[0].health.path);
+			expect(health.status).toBe(200);
+			expect(await health.text()).toContain('fixture build output');
+			const plans = await fetch(`http://127.0.0.1:${port}/api/plans`);
+			expect(plans.status).toBe(200);
+			expect(Array.isArray(((await plans.json()) as { records?: unknown }).records)).toBe(true);
+		} finally {
+			server.kill();
+			await server.exited;
+			rmSync(output, { recursive: true, force: true });
 		}
 	});
 
@@ -172,7 +222,7 @@ describe('Mission Control runtime contract', () => {
 			stdout: 'pipe',
 			stderr: 'pipe',
 		});
-		await waitForPlans(port);
+		await waitForServer(port);
 		server.kill('SIGTERM');
 		expect(await server.exited).toBe(0);
 	});

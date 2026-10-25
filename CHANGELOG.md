@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+- From `main` the App runs as one production process (LazurioPlatform F58
+  addendum (2), root decision 0195 point 24): `lazurio.runtime` declares
+  `start_script: "dev"`, `build_script: "prepare:app"` (the client only,
+  formerly `build`) and `build_output: "dist"`, and the server serves its
+  client from `LAZURIO_RUNTIME_BUILD_OUTPUT` when set, otherwise from
+  `app/v3/dist`. `dev` starts Bun with `--no-env-file`. Integrate this into an
+  Organization fork only when every Environment of that Organization runs a
+  LazurioPlatform release that knows `start_script` (v0.1.11) and the Lazurio
+  root on its computers knows it too: an older release refuses the unknown
+  key and does not start the App.
+
 ## 3.0.0 — 2026-10-16
 
 First public release as `Lazurio/mission-control`, published with fresh Git

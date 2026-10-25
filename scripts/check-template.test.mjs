@@ -8460,22 +8460,29 @@ test("readiness check source is required", () => {
   );
 });
 
-test("the Launchpad entry is only dev_script dev, with no preview_script", () => {
-  const failures = withTempTemplate((tempRoot) => {
-    const appPath = join(tempRoot, "app/v3/package.json");
-    const appPackage = JSON.parse(readFileSync(appPath, "utf8"));
-    appPackage.scripts.start = "bun run src/server.ts";
-    appPackage.lazurio.runtime.dev_script = "start";
-    appPackage.lazurio.runtime.preview_script = "start";
-    writeFileSync(appPath, `${JSON.stringify(appPackage, null, 2)}\n`);
+for (const [label, mutate] of [
+  ["dev_script", (runtime) => { runtime.dev_script = "start"; }],
+  ["start_script", (runtime) => { runtime.start_script = "start"; }],
+  ["preview_script", (runtime) => { runtime.preview_script = "start"; }],
+]) {
+  test(`the Launchpad entry is only dev: refuses another ${label}`, () => {
+    const failures = withTempTemplate((tempRoot) => {
+      const appPath = join(tempRoot, "app/v3/package.json");
+      const appPackage = JSON.parse(readFileSync(appPath, "utf8"));
+      appPackage.scripts.start = "bun --no-env-file run src/server.ts";
+      mutate(appPackage.lazurio.runtime);
+      writeFileSync(appPath, `${JSON.stringify(appPackage, null, 2)}\n`);
+    });
+    assert.ok(
+      failures.some((failure) =>
+        failure.includes(
+          "lazurio.runtime must start only dev (dev_script and start_script) and declare no preview_script",
+        ),
+      ),
+      failures.join("\n"),
+    );
   });
-  assert.ok(
-    failures.some((failure) =>
-      failure.includes("lazurio.runtime must start only dev_script dev and declare no preview_script"),
-    ),
-    failures.join("\n"),
-  );
-});
+}
 
 test("developer convenience scripts are not policed as start paths", () => {
   // The Launchpad runs only dev_script; aliases are not a security boundary.

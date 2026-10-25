@@ -171,10 +171,19 @@ bun run test
 
 The App is a Lazurio Module (Lazurio Module Standard, decision 0171): Launchpad
 runs its declared preparation (`app/v3` `prepare:app`, the client build) and
-starts it with `app/v3` `dev` (`bun run src/server.ts`, one process, listener
-only from `LAZURIO_RUNTIME_LISTENER_WEB_HOST/_PORT`). The root package is
-repository tooling and has no start script; see
+starts it with `app/v3` `dev` (`bun --no-env-file run src/server.ts`, one
+process, listener only from `LAZURIO_RUNTIME_LISTENER_WEB_HOST/_PORT`). The
+root package is repository tooling and has no start script; see
 `docs/mission-control-v3-rollout-manual.md` for direct development.
+
+From `main` the same server is the production start (`lazurio.runtime`
+`start_script: "dev"`, `build_script: "prepare:app"`, `build_output: "dist"`):
+the Platform builds the client once per module commit outside the checkout,
+starts the server with `NODE_ENV=production` and passes that build as
+`LAZURIO_RUNTIME_BUILD_OUTPUT`, and restarts it after a pull that changes the
+module. The server reads plans and tasks from the data mount on every request,
+so a data-only pull needs no restart. A worktree preview stays the development
+run, which serves its own `app/v3/dist`.
 
 Root scripts use `scripts/run-v3.mjs` instead of POSIX-only `export`/`cd`
 chains, so the same commands work on macOS, Linux and Windows. The runner reads

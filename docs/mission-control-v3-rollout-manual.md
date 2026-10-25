@@ -108,10 +108,14 @@ the client once (`dist/`), `check:prepared` is the read-only readiness check
 (`src/prepared.ts`: self-contained, exits non-zero while `dist/index.html` is
 missing). `scripts/check-template.mjs` runs it in a disposable copy and
 requires exactly that behaviour, no writes and a prompt exit.
-Start is `app/v3` `dev` = `bun run src/server.ts`: one Bun process that serves
-the built client and `/api/*` on the `web` listener. Launchpad runs only
-`lazurio.runtime.dev_script` (`dev`, no `preview_script`); other package
-scripts such as `dev:client` are developer conveniences it never runs.
+Start is `app/v3` `dev` = `bun --no-env-file run src/server.ts`: one Bun
+process that serves the built client and `/api/*` on the `web` listener.
+Launchpad runs only `lazurio.runtime.dev_script` and, from `main`,
+`start_script` (both `dev`, no `preview_script`); other package scripts such as
+`dev:client` are developer conveniences it never runs. A start from `main` runs
+in production mode and serves the client from `LAZURIO_RUNTIME_BUILD_OUTPUT`,
+the Platform's build of `build_script` (`prepare:app`) for that module commit;
+without the variable the server serves `app/v3/dist`.
 Launchpad injects
 `LAZURIO_RUNTIME_LISTENER_WEB_HOST` and `LAZURIO_RUNTIME_LISTENER_WEB_PORT`
 from the exact `main` lease; the server reads them through

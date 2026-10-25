@@ -5,7 +5,7 @@
   "type": "module",
   "packageManager": "bun@1.4.2",
   "scripts": {
-    "dev": "bun run src/server.ts",
+    "dev": "bun --no-env-file run src/server.ts",
     "dev:client": "bun ./node_modules/vite/bin/vite.js build --watch --mode development",
     "build": "tsc -b && bun run prepare:app",
     "prepare:app": "bun ./node_modules/vite/bin/vite.js build",
@@ -49,7 +49,9 @@
       "module": "mission-control",
       "surface": "internal",
       "dev_script": "dev",
-      "build_script": "build",
+      "start_script": "dev",
+      "build_script": "prepare:app",
+      "build_output": "dist",
       "required_module_slots": [
         "mission-control/db"
       ],
