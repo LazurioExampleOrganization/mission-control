@@ -2,12 +2,13 @@
 // Organization rollout).
 //
 // Start contract (Lazurio Module Standard, decision 0171): the Launchpad runs
-// only `lazurio.runtime.dev_script`. The guard therefore checks what is
-// actually started and what actually gates readiness, behaviourally where
-// possible: dev_script is `dev`, `dev` is exactly the single-process server
-// start, no preview_script, the client build is the declared preparation and
-// the declared readiness check is executed in a disposable copy (it must fail
-// without dist/index.html, pass with it, write nothing and finish promptly).
+// only `lazurio.runtime.dev_script` and, from `main`, `start_script`. The guard
+// therefore checks what is actually started and what actually gates readiness,
+// behaviourally where possible: dev_script and start_script are `dev`, `dev`
+// is exactly the single-process server start, no preview_script, the client
+// build is the declared preparation and the declared readiness check is
+// executed in a disposable copy (it must fail without dist/index.html, pass
+// with it, write nothing and finish promptly).
 //
 // It deliberately does not try to prove that no other package.json script can
 // start the server. Extra scripts are developer conveniences the Launchpad
@@ -1381,8 +1382,8 @@ function validateAppStartContract(root, appPackageText, preparedSource, failures
     return; // The JSON parser reports invalid or missing package.json separately.
   }
   const scripts = appPackage?.scripts ?? {};
-  if (scripts.dev !== "bun run src/server.ts") {
-    failures.push("app/v3/package.json: dev must start exactly one Bun server process (bun run src/server.ts)");
+  if (scripts.dev !== "bun --no-env-file run src/server.ts") {
+    failures.push("app/v3/package.json: dev must start exactly one Bun server process (bun --no-env-file run src/server.ts)");
   }
   if (scripts["prepare:app"] !== APP_PREPARE_SCRIPT) {
     failures.push(`app/v3/package.json: prepare:app must build the client once (${APP_PREPARE_SCRIPT})`);
@@ -1403,12 +1404,19 @@ function validateAppStartContract(root, appPackageText, preparedSource, failures
       validatePreparedCheckBehavior(root, failures);
     }
   }
-  // What the Launchpad starts: only lazurio.runtime.dev_script. It must be
-  // `dev` (checked above to be exactly the single-process server start) and no
-  // preview_script may offer the Launchpad a second entry.
+  // What the Launchpad starts: lazurio.runtime.dev_script and, from `main`,
+  // start_script. Both must be `dev` (checked above to be exactly the
+  // single-process server start) and no preview_script may offer the
+  // Launchpad a second entry.
   const runtime = appPackage?.lazurio?.runtime;
-  if (runtime?.dev_script !== "dev" || Object.hasOwn(runtime ?? {}, "preview_script")) {
-    failures.push("app/v3/package.json: lazurio.runtime must start only dev_script dev and declare no preview_script");
+  if (
+    runtime?.dev_script !== "dev" ||
+    runtime?.start_script !== "dev" ||
+    Object.hasOwn(runtime ?? {}, "preview_script")
+  ) {
+    failures.push(
+      "app/v3/package.json: lazurio.runtime must start only dev (dev_script and start_script) and declare no preview_script",
+    );
   }
   const preparation = appPackage?.lazurio?.preparation;
   if (

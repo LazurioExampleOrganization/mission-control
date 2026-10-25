@@ -46,7 +46,19 @@ import {
 } from './validate.ts';
 import { buildPlanWork, buildWorkBoard } from './work-board.ts';
 
-const DIST_DIR = resolve(import.meta.dir, '..', 'dist');
+/**
+ * The client build the server serves. A start from `main` hands it the stored
+ * output of the module commit's client build, outside the checkout, as
+ * `LAZURIO_RUNTIME_BUILD_OUTPUT` (LazurioPlatform F58 addendum (2), root
+ * decision 0195 point 24); a development run has no such variable and serves
+ * the package's own `dist/`, built by the declared preparation.
+ */
+export function clientDirectory(env: Record<string, string | undefined> = process.env): string {
+	const output = env.LAZURIO_RUNTIME_BUILD_OUTPUT;
+	return output ? resolve(output) : resolve(import.meta.dir, '..', 'dist');
+}
+
+const DIST_DIR = clientDirectory();
 const MIME: Record<string, string> = {
 	'.html': 'text/html; charset=utf-8',
 	'.js': 'application/javascript; charset=utf-8',
