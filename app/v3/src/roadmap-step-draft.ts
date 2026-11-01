@@ -3,6 +3,12 @@ import { stringify as stringifyYaml } from 'yaml';
 import { MISSION_CONTROL_DATA_ROOT, WORKSPACE_ROOT, workspaceRelative } from './paths.ts';
 import type { RoadmapStep } from './roadmap-model.ts';
 import {
+	isRoadmapTimingConfidence,
+	parseRoadmapPeriod,
+	ROADMAP_TIMING_CONFIDENCES,
+	type RoadmapStepTiming,
+} from './roadmap-timing.ts';
+import {
 	loadMissionControlConfig,
 	loadPlans,
 	loadRoadmaps,
@@ -31,6 +37,7 @@ export type RoadmapStepDraftPayload = {
 	title?: unknown;
 	status?: unknown;
 	executable?: unknown;
+	timing?: unknown;
 	priority_refs?: unknown;
 	plan_refs?: unknown;
 	todo_refs?: unknown;
@@ -100,6 +107,66 @@ function optionalBoolean(value: unknown, field: string): boolean | undefined {
 		throw new RoadmapStepDraftError('invalid_field', 400, `${field} musí být boolean.`);
 	}
 	return value;
+}
+
+const TIMING_PERIOD_MESSAGE = 'musí být měsíc YYYY-MM nebo čtvrtletí YYYY-Qn';
+
+// `null` termín odebere; pořadí `from`, `to`, `confidence` drží YAML čitelný.
+function optionalTiming(value: unknown): RoadmapStepTiming | null | undefined {
+	if (value === undefined) return undefined;
+	if (value === null) return null;
+	if (!isRecord(value)) {
+		throw new RoadmapStepDraftError(
+			'invalid_timing',
+			400,
+			'timing musí být objekt s poli to, from a confidence.',
+		);
+	}
+	const unknownKeys = Object.keys(value).filter(
+		(key) => !['from', 'to', 'confidence'].includes(key),
+	);
+	if (unknownKeys.length > 0) {
+		throw new RoadmapStepDraftError(
+			'invalid_timing',
+			400,
+			`timing obsahuje neznámá pole: ${unknownKeys.join(', ')}.`,
+		);
+	}
+	const to = nonEmptyString(value.to);
+	if (!to || !parseRoadmapPeriod(to)) {
+		throw new RoadmapStepDraftError('invalid_timing', 400, `timing.to ${TIMING_PERIOD_MESSAGE}.`);
+	}
+	const from = nonEmptyString(value.from);
+	if (value.from !== undefined && (!from || !parseRoadmapPeriod(from))) {
+		throw new RoadmapStepDraftError('invalid_timing', 400, `timing.from ${TIMING_PERIOD_MESSAGE}.`);
+	}
+	let confidence: RoadmapStepTiming['confidence'];
+	if (value.confidence !== undefined) {
+		if (!isRoadmapTimingConfidence(value.confidence)) {
+			throw new RoadmapStepDraftError(
+				'invalid_timing',
+				400,
+				`timing.confidence musí být jedna z: ${ROADMAP_TIMING_CONFIDENCES.join(', ')}.`,
+			);
+		}
+		confidence = value.confidence;
+	}
+	return {
+		...(from ? { from } : {}),
+		to,
+		...(confidence ? { confidence } : {}),
+	};
+}
+
+// Termín patří hned za `executable`, ať je v YAML u stavu kroku.
+function placeTiming(step: Record<string, unknown>, timing: RoadmapStepTiming): void {
+	const entries = Object.entries(step).filter(([key]) => key !== 'timing');
+	for (const key of Object.keys(step)) delete step[key];
+	for (const [key, value] of entries) {
+		step[key] = value;
+		if (key === 'executable') step.timing = timing;
+	}
+	if (!('timing' in step)) step.timing = timing;
 }
 
 function cloneRoadmap(value: unknown): MissionControlRoadmapObject & Record<string, unknown> {
@@ -174,6 +241,9 @@ function updateExistingStep(
 	if (status) step.status = status;
 	const executable = optionalBoolean(payload.executable, 'executable');
 	if (executable !== undefined) step.executable = executable;
+	const timing = optionalTiming(payload.timing);
+	if (timing === null) delete step.timing;
+	else if (timing) placeTiming(step, timing);
 	for (const field of [
 		'priority_refs',
 		'plan_refs',
@@ -181,6 +251,11 @@ function updateExistingStep(
 		'issue_refs',
 		'acceptance_criteria',
 	] as const) {
+		// `null` odebere seznam odkazů; prázdné pole schéma nedovolí.
+		if (payload[field] === null && field !== 'acceptance_criteria') {
+			delete step[field];
+			continue;
+		}
 		const list = optionalStringArray(payload[field], field);
 		if (list !== undefined) step[field] = list;
 	}
@@ -209,15 +284,21 @@ function createNewStep(
 		);
 	}
 	const executable = optionalBoolean(payload.executable, 'executable') ?? true;
+	const timing = optionalTiming(payload.timing);
+	// Schéma nedovolí prázdná ref pole, proto se nevyplněná pole nezapisují.
+	const planRefs = optionalStringArray(payload.plan_refs, 'plan_refs');
+	const todoRefs = optionalStringArray(payload.todo_refs, 'todo_refs');
+	const issueRefs = optionalStringArray(payload.issue_refs, 'issue_refs');
 	const step: RoadmapStep = {
 		id: nextStepId(steps),
 		title,
 		status: nonEmptyString(payload.status) ?? 'shaping',
 		executable,
+		...(timing ? { timing } : {}),
 		priority_refs: priorityRefs,
-		plan_refs: optionalStringArray(payload.plan_refs, 'plan_refs') ?? [],
-		todo_refs: optionalStringArray(payload.todo_refs, 'todo_refs') ?? [],
-		issue_refs: optionalStringArray(payload.issue_refs, 'issue_refs') ?? [],
+		...(planRefs ? { plan_refs: planRefs } : {}),
+		...(todoRefs ? { todo_refs: todoRefs } : {}),
+		...(issueRefs ? { issue_refs: issueRefs } : {}),
 		acceptance_criteria:
 			optionalStringArray(payload.acceptance_criteria, 'acceptance_criteria') ?? [],
 	};

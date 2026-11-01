@@ -25,10 +25,12 @@ type State =
 export function PlanDetail({
 	devCode,
 	onBack,
+	backLabel = '← Zpět na seznam',
 	onSaved,
 }: {
 	devCode: string;
 	onBack: () => void;
+	backLabel?: string;
 	onSaved: () => Promise<void>;
 }) {
 	const [state, setState] = useState<State>({ kind: 'loading' });
@@ -69,7 +71,7 @@ export function PlanDetail({
 			<div className='panel'>
 				<p className='error-text'>{state.message}</p>
 				<button type='button' className='button' onClick={onBack}>
-					← Zpět na seznam
+					{backLabel}
 				</button>
 			</div>
 		);
@@ -127,7 +129,7 @@ export function PlanDetail({
 				<div className='panel-header'>
 					<div>
 						<button type='button' className='button' onClick={onBack}>
-							← Zpět na seznam
+							{backLabel}
 						</button>
 						<h2 style={{ marginTop: 12 }}>
 							<span className='plan-card-code'>{plan.dev_code}</span> · {plan.title}
@@ -155,7 +157,7 @@ export function PlanDetail({
 			<div className='panel-header'>
 				<div>
 					<button type='button' className='button' onClick={onBack}>
-						← Zpět na seznam
+						{backLabel}
 					</button>
 					<h2 style={{ marginTop: 12 }}>
 						<span className='plan-card-code'>{plan.dev_code}</span> · {plan.title}

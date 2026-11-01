@@ -13,6 +13,89 @@
   root on its computers knows it too: an older release refuses the unknown
   key and does not start the App.
 
+## 3.1.0 — 2026-11-01
+
+Main roadmap and approximate step timing, plus cheaper continuous
+integration. The roadmap schema changes, so an Organization adopts this
+release in one short window for its app and its data repository (see
+"Adopting 3.1.0" below).
+
+### Main roadmap and approximate step timing
+
+- A Roadmap Step may carry an optional `timing`: `to` (and optionally `from`)
+  as a calendar month `YYYY-MM` or a quarter `YYYY-Qn`, plus an optional
+  `confidence` of `committed`, `likely` or `tentative`. `from` must neither
+  start nor end after `to`.
+- A roadmap may set `main: true`. At most one roadmap in an Organization data
+  repository carries it, and an archived roadmap cannot.
+- Both fields are optional, so existing roadmaps keep validating. The app
+  validator, the pinned data validator, the roadmap and step drafts and the
+  roadmap schema enforce the same rules.
+- New first sidebar entry **Hlavní roadmapa**: the main roadmap as a quarter
+  timeline with step states, the next planned step and click-through to the
+  plans, their pull requests and issues. On a phone it is a list by landing
+  quarter with the current quarter marked. Without `main: true` the page
+  shows the only roadmap, otherwise the one in progress or the first active
+  one, and says that no main roadmap is designated.
+- Order comes from the timing and the step order in the file; there is no
+  second ordering store.
+- The dry-run roadmap execution report without a roadmap code starts from the
+  main roadmap.
+- Creating a step draft no longer writes empty ref arrays that the schema
+  rejects.
+- The step draft on the Roadmaps page edits the selected step. It loads that
+  step's own `plan_refs` and timing, and an update sends them only when they
+  changed. Before, it always sent the next step's `plan_refs`, so changing only
+  another step's timing silently replaced that step's plan references. The
+  stand-in values for plan and priority refs are gone; a new step defaults to
+  the roadmap's first priority. Emptying a prefilled `plan_refs` or timing
+  removes it: the draft API now accepts `null` for reference lists, as it
+  already did for timing, and still rejects an empty list. The form never edits
+  a step of another roadmap: the edited step is derived from the selected
+  roadmap, and one function builds the whole request.
+- The plan list page is titled **Plány** instead of **Roadmapa**, so only one
+  page is called a roadmap.
+- The template guard (`scripts/check-template.mjs`) checks the shape of the
+  step timing and the main roadmap marker, keeps both optional, and requires
+  the Organization data copy of the roadmap schema to stay identical to the
+  app/code schema.
+- `docs/roadmap-planning-model.md` explains the timing, the main roadmap, the
+  leader timeline and adoption; the operating manual mentions both fields.
+
+### Continuous integration
+
+- `checks.yml` runs the full test for every pull request and push to `main`
+  on Linux only.
+- The new `windows-portability.yml` runs the same steps on Windows only for
+  pull requests that change the App, code, the toolchain or a workflow, and on
+  demand; never on the push to `main` after a merge. Organization forks are
+  usually private, and Windows minutes count twice against the GitHub free
+  tier there.
+
+### Adopting 3.1.0
+
+An updated app accepts an inbound data update only when the data
+repository's schema copies are identical to its own, so the new roadmap schema
+moves the app and the data together:
+
+1. Integrate the release tag into the Organization's `mission-control` fork
+   through the usual reviewed merge pull request.
+2. Prepare one data pull request on `v3` of `<Org>/mission-control-data` that
+   copies `templates/organization-data/schemas/mission-control-roadmap.schema.json`
+   to `schemas/` and
+   `templates/organization-data/scripts/validate-mission-control-data.mjs`
+   to `scripts/`. It may also mark the main roadmap with `main: true` and add
+   `timing` to the steps leaders should see.
+3. Update every app client of the Organization (each checkout of its Mission
+   Control that people or its automated Environments run) and publish the data
+   pull request in one announced, short window. Until both sides match, an
+   updated client refuses inbound data on the old schema, and a client still
+   on 3.0.x cannot import data on the new one.
+
+Until the data copies are updated, `timing` and `main` are rejected as unknown
+fields; roadmaps without them keep validating and the timeline lists their
+steps as unscheduled.
+
 ## 3.0.0 — 2026-10-16
 
 First public release as `Lazurio/mission-control`, published with fresh Git

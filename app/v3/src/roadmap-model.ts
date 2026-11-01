@@ -1,3 +1,7 @@
+import type { RoadmapStepTiming } from './roadmap-timing.ts';
+
+export type { RoadmapStepTiming } from './roadmap-timing.ts';
+
 export type RoadmapEvidenceRef = {
 	label: string;
 	kind: string;
@@ -24,6 +28,7 @@ export type RoadmapStep = {
 	title: string;
 	status: string;
 	executable: boolean;
+	timing?: RoadmapStepTiming;
 	priority_refs: string[];
 	plan_refs?: string[];
 	todo_refs?: string[];
@@ -45,9 +50,17 @@ export type MissionControlRoadmap = {
 	updated_at: string;
 	source_plan: string;
 	summary: string;
+	main?: boolean;
 	agent_lane?: RoadmapAgentLaneSource;
 	priorities: RoadmapPriority[];
 	steps: RoadmapStep[];
+	links?: RoadmapLink[];
+};
+
+export type RoadmapLink = {
+	label: string;
+	path?: string;
+	url?: string;
 };
 
 export type RoadmapNextStep = Pick<

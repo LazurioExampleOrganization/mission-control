@@ -24,6 +24,32 @@ describe('Mission Control roadmap creation draft', () => {
 		expect(draft.validation.ok).toBe(true);
 	});
 
+	test('marks a new roadmap as main and lets validation guard the single main roadmap', () => {
+		const draft = buildNewRoadmapDraft({
+			source_plan: 'DEV-0002',
+			title: 'Template main roadmap handover',
+			main: true,
+		});
+
+		expect(draft.roadmap.main).toBe(true);
+		expect(draft.yaml).toContain('main: true');
+		expect(draft.yaml.indexOf('main: true')).toBeLessThan(draft.yaml.indexOf('status:'));
+		// The fixture RM-0001 is already the main roadmap; the draft says so instead of guessing.
+		expect(draft.validation.ok).toBe(false);
+		expect(draft.validation.failures).toContainEqual(
+			expect.stringContaining('main: true už nese data/mission-control/roadmaps/2026/RM-0001'),
+		);
+
+		const regular = buildNewRoadmapDraft({ source_plan: 'DEV-0002', main: false });
+		expect(regular.roadmap.main).toBeUndefined();
+		expect(regular.yaml).not.toContain('main:');
+		expect(regular.validation.ok).toBe(true);
+
+		expect(() => buildNewRoadmapDraft({ source_plan: 'DEV-0002', main: 'yes' })).toThrow(
+			'main musí být boolean.',
+		);
+	});
+
 	test('rejects missing or unknown source plans', () => {
 		expect(() => buildNewRoadmapDraft({})).toThrow(RoadmapCreateDraftError);
 		expect(() => buildNewRoadmapDraft({ source_plan: 'DEV-9999' })).toThrow(

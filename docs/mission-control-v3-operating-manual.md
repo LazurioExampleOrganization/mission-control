@@ -134,6 +134,8 @@ Roadmaps are long-lived outcome records. A roadmap must explain:
 - which plan(s), task(s), or issue(s) make each step executable;
 - what evidence closes each done step.
 
+A roadmap may also say approximately when each step lands (`timing`, a month or quarter window) and whether it is the Organization's main roadmap (`main: true`, at most one per Organization). The **Hlavní roadmapa** view shows the main roadmap as a timeline that leaders can read without opening plans.
+
 Roadmap files use `schemas/mission-control-roadmap.schema.json` and the conceptual model in `docs/roadmap-planning-model.md`.
 
 ### Plans

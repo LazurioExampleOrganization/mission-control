@@ -2,11 +2,15 @@ import { describe, expect, test } from 'bun:test';
 import { navSections } from '../src/ui-app/navigation.ts';
 
 describe('Mission Control navigation', () => {
-	test('exposes Roadmaps as a first-class sidebar section', () => {
+	test('exposes the main roadmap timeline first, then Roadmaps, as a first-class sidebar section', () => {
+		expect(navSections[0]?.label).toBe('Roadmapy');
 		const roadmapSection = navSections.find((section) => section.label === 'Roadmapy');
 
-		expect(roadmapSection?.items.map((item) => item.id)).toEqual(['roadmaps']);
-		expect(roadmapSection?.items.map((item) => item.label)).toEqual(['Roadmaps']);
+		expect(roadmapSection?.items.map((item) => item.id)).toEqual(['main-roadmap', 'roadmaps']);
+		expect(roadmapSection?.items.map((item) => item.label)).toEqual([
+			'Hlavní roadmapa',
+			'Roadmaps',
+		]);
 	});
 
 	test('keeps agent work as one Mission Control cockpit', () => {

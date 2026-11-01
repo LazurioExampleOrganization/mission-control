@@ -1,6 +1,7 @@
 import type { PlanStatus } from '../model.ts';
 
 export type PageId =
+	| 'main-roadmap'
 	| 'roadmaps'
 	| 'plans-all'
 	| 'plans-shaping'
@@ -18,6 +19,7 @@ export type PageId =
 	| 'new-plan';
 
 export type IconName =
+	| 'timeline'
 	| 'roadmap'
 	| 'shaping'
 	| 'ready'
@@ -41,7 +43,10 @@ export type NavSection = {
 export const navSections: NavSection[] = [
 	{
 		label: 'Roadmapy',
-		items: [{ id: 'roadmaps', label: 'Roadmaps', icon: 'roadmap' }],
+		items: [
+			{ id: 'main-roadmap', label: 'Hlavní roadmapa', icon: 'timeline' },
+			{ id: 'roadmaps', label: 'Roadmaps', icon: 'roadmap' },
+		],
 	},
 	{
 		label: 'Plány',
@@ -83,6 +88,7 @@ export const navSections: NavSection[] = [
 export const STATUS_FILTER_TO_PLAN_STATUS: Record<
 	Exclude<
 		PageId,
+		| 'main-roadmap'
 		| 'roadmaps'
 		| 'plans-all'
 		| 'agent-work'

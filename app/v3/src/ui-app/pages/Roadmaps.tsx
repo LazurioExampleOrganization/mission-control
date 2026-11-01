@@ -7,12 +7,14 @@ import type {
 	RoadmapResolutionEvidence,
 	RoadmapStep,
 } from '../../roadmap-model.ts';
+import { type RoadmapStepTiming, roadmapTimingWindow } from '../../roadmap-timing.ts';
 import {
 	api,
 	type RoadmapDraftResponse,
 	type RoadmapStepDraftResponse,
 	type RoadmapsResponse,
 } from '../api.ts';
+import { CONFIDENCE_LABELS, formatTimingWindow } from '../roadmap-timeline.ts';
 
 export function RoadmapsPage({
 	response,
@@ -77,12 +79,123 @@ export function optionalDraftList(value: string): string[] | undefined {
 	return items.length > 0 ? items : undefined;
 }
 
+/** Prázdná pole termín neposílají; neúplný termín odmítne až server s důvodem. */
+export function optionalTimingDraft(
+	from: string,
+	to: string,
+	confidence: string,
+): Record<string, string> | undefined {
+	const timing: Record<string, string> = {};
+	if (from.trim()) timing.from = from.trim();
+	if (to.trim()) timing.to = to.trim();
+	if (confidence.trim()) timing.confidence = confidence.trim();
+	return Object.keys(timing).length > 0 ? timing : undefined;
+}
+
+export type StepDraftForm = {
+	planRefs: string;
+	timingFrom: string;
+	timingTo: string;
+	timingConfidence: string;
+};
+
+/** Výchozí hodnoty formuláře pro vybraný krok: jeho vlastní plan_refs a termín, nikdy jiného kroku. */
+export function stepDraftDefaults(step: RoadmapStep | undefined): StepDraftForm {
+	const timing: Partial<RoadmapStepTiming> =
+		step?.timing && typeof step.timing === 'object' ? step.timing : {};
+	return {
+		planRefs: Array.isArray(step?.plan_refs) ? step.plan_refs.join('\n') : '',
+		timingFrom: typeof timing.from === 'string' ? timing.from : '',
+		timingTo: typeof timing.to === 'string' ? timing.to : '',
+		timingConfidence: typeof timing.confidence === 'string' ? timing.confidence : '',
+	};
+}
+
+function sameList(left: string[], right: unknown): boolean {
+	return (
+		Array.isArray(right) &&
+		left.length === right.length &&
+		left.every((item, i) => item === right[i])
+	);
+}
+
+function sameTiming(left: Record<string, string>, right: unknown): boolean {
+	const other = right && typeof right === 'object' ? (right as Record<string, unknown>) : {};
+	return ['from', 'to', 'confidence'].every((key) => left[key] === other[key]);
+}
+
+/**
+ * plan_refs a termín, které draft kroku pošle. Nový krok dostane, co je vyplněné. Úprava
+ * existujícího kroku pošle seznam nebo termín jen tehdy, když se liší od vybraného kroku, aby
+ * změna jednoho pole nepřepsala jeho ostatní hodnoty.
+ */
+export function stepDraftChanges(
+	mode: 'update' | 'create',
+	step: RoadmapStep | undefined,
+	form: StepDraftForm,
+): { plan_refs?: string[] | null; timing?: Record<string, string> | null } {
+	const planRefs = optionalDraftList(form.planRefs);
+	const timing = optionalTimingDraft(form.timingFrom, form.timingTo, form.timingConfidence);
+	if (mode === 'create') return { plan_refs: planRefs, timing };
+	// A field the person emptied removes the step's own value (`null`).
+	const hadRefs = Array.isArray(step?.plan_refs) && step.plan_refs.length > 0;
+	const hadTiming = step?.timing !== undefined && step?.timing !== null;
+	return {
+		plan_refs: planRefs
+			? sameList(planRefs, step?.plan_refs)
+				? undefined
+				: planRefs
+			: hadRefs
+				? null
+				: undefined,
+		timing: timing
+			? sameTiming(timing, step?.timing)
+				? undefined
+				: timing
+			: hadTiming
+				? null
+				: undefined,
+	};
+}
+
+/** The step the form edits: the chosen one while it is in the selected roadmap, else the roadmap's default. */
+export function selectedStepId(steps: RoadmapStep[], chosen: string, fallback: string): string {
+	return steps.some((step) => step.id === chosen) ? chosen : fallback;
+}
+
+export type StepDraftInput = {
+	mode: 'update' | 'create';
+	steps: RoadmapStep[];
+	stepId: string;
+	defaultStepId: string;
+	title: string;
+	priorityRefs: string;
+	acceptanceCriteria: string;
+	form: StepDraftForm;
+};
+
+/** The dry-run request for the step draft API, built from the form as it is now. */
+export function stepDraftPayload(input: StepDraftInput): Record<string, unknown> {
+	const stepId = selectedStepId(input.steps, input.stepId, input.defaultStepId);
+	const step = input.steps.find((item) => item.id === stepId);
+	return {
+		dry_run: true,
+		mode: input.mode,
+		step_id: input.mode === 'update' ? stepId : undefined,
+		title: input.title.trim() || undefined,
+		priority_refs: input.mode === 'create' ? optionalDraftList(input.priorityRefs) : undefined,
+		...stepDraftChanges(input.mode, step, input.form),
+		acceptance_criteria: optionalDraftList(input.acceptanceCriteria),
+	};
+}
+
 function RoadmapCreateDraftPanel({ response }: { response: RoadmapsResponse }) {
 	const defaultSourcePlan = response.roadmaps[0]?.roadmap.source_plan ?? '';
 	const [sourcePlan, setSourcePlan] = useState(defaultSourcePlan);
 	const [title, setTitle] = useState('');
 	const [owner, setOwner] = useState('');
 	const [summary, setSummary] = useState('');
+	const [main, setMain] = useState(false);
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [draft, setDraft] = useState<RoadmapDraftResponse | null>(null);
@@ -103,6 +216,7 @@ function RoadmapCreateDraftPanel({ response }: { response: RoadmapsResponse }) {
 				title: title.trim() || undefined,
 				owner: owner.trim() || undefined,
 				summary: summary.trim() || undefined,
+				main: main || undefined,
 			});
 			setDraft(result);
 		} catch (err) {
@@ -169,6 +283,20 @@ function RoadmapCreateDraftPanel({ response }: { response: RoadmapsResponse }) {
 						placeholder='Nech prázdné = target_state/source plan context'
 					/>
 				</div>
+				<label className='field full roadmap-main-toggle' htmlFor='roadmap-create-main'>
+					<span>
+						<input
+							id='roadmap-create-main'
+							type='checkbox'
+							checked={main}
+							onChange={(event) => setMain(event.target.checked)}
+						/>{' '}
+						Hlavní roadmapa Organizace (<code>main: true</code>)
+					</span>
+					<small className='muted'>
+						Hlavní může být jen jedna; u dosavadní hlavní roadmapy příznak odeberte.
+					</small>
+				</label>
 			</div>
 			{error && <p className='error-text'>{error}</p>}
 			{draft && (
@@ -194,7 +322,6 @@ function RoadmapStepDraftPanel({ response }: { response: RoadmapsResponse }) {
 		[response.roadmaps],
 	);
 	const [roadmapCode, setRoadmapCode] = useState(selectableRoadmaps[0]?.roadmap.roadmap_code ?? '');
-	const [mode, setMode] = useState<'update' | 'create'>('update');
 	const selectedRecord = useMemo(
 		() =>
 			selectableRoadmaps.find((record) => record.roadmap.roadmap_code === roadmapCode) ??
@@ -205,22 +332,43 @@ function RoadmapStepDraftPanel({ response }: { response: RoadmapsResponse }) {
 		? selectedRecord.roadmap.steps.filter(isRoadmapStep)
 		: [];
 	const defaultStepId = selectedRecord?.next_step?.id ?? steps[0]?.id ?? '';
-	const defaultPlanRefs = selectedRecord?.next_step?.plan_refs?.join('\n') ?? 'DEV-0001';
+	const defaultPriorityRefs = selectedRecord?.roadmap.priorities?.[0]?.id ?? '';
 	const [stepId, setStepId] = useState(defaultStepId);
+	const [mode, setMode] = useState<'update' | 'create'>('update');
+	// Derived on every render, so a step id chosen on another roadmap is never shown or sent.
+	const effectiveStepId = selectedStepId(steps, stepId, defaultStepId);
+	const selectedStep = steps.find((step) => step.id === effectiveStepId);
+	const initial = stepDraftDefaults(selectedStep);
 	const [title, setTitle] = useState('');
-	const [priorityRefs, setPriorityRefs] = useState('priority-002');
-	const [planRefs, setPlanRefs] = useState(defaultPlanRefs);
+	const [priorityRefs, setPriorityRefs] = useState(defaultPriorityRefs);
+	const [planRefs, setPlanRefs] = useState(initial.planRefs);
 	const [acceptanceCriteria, setAcceptanceCriteria] = useState('');
+	const [timingFrom, setTimingFrom] = useState(initial.timingFrom);
+	const [timingTo, setTimingTo] = useState(initial.timingTo);
+	const [timingConfidence, setTimingConfidence] = useState(initial.timingConfidence);
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [draft, setDraft] = useState<RoadmapStepDraftResponse | null>(null);
 
+	const selectedRoadmapCode = selectedRecord?.roadmap.roadmap_code ?? '';
+	// biome-ignore lint/correctness/useExhaustiveDependencies: a change of roadmap resets the choice
 	useEffect(() => {
 		setStepId(defaultStepId);
-		setPlanRefs(defaultPlanRefs);
+		setPriorityRefs(defaultPriorityRefs);
+	}, [selectedRoadmapCode, defaultStepId, defaultPriorityRefs]);
+
+	// The form edits the selected step: switching roadmap, step or mode reloads its own values.
+	const selectedStepKey = `${selectedRecord?.roadmap.roadmap_code ?? ''}/${mode}/${selectedStep?.id ?? ''}`;
+	// biome-ignore lint/correctness/useExhaustiveDependencies: keyed by the selected step, which the key names
+	useEffect(() => {
+		const values = stepDraftDefaults(mode === 'update' ? selectedStep : undefined);
+		setPlanRefs(values.planRefs);
+		setTimingFrom(values.timingFrom);
+		setTimingTo(values.timingTo);
+		setTimingConfidence(values.timingConfidence);
 		setDraft(null);
 		setError(null);
-	}, [defaultStepId, defaultPlanRefs]);
+	}, [selectedStepKey]);
 
 	async function handleDraft() {
 		const targetRoadmapCode = selectedRecord?.roadmap.roadmap_code;
@@ -229,15 +377,19 @@ function RoadmapStepDraftPanel({ response }: { response: RoadmapsResponse }) {
 		setError(null);
 		setDraft(null);
 		try {
-			const result = await api.draftRoadmapStep(targetRoadmapCode, {
-				dry_run: true,
-				mode,
-				step_id: mode === 'update' ? stepId || defaultStepId : undefined,
-				title: title.trim() || undefined,
-				priority_refs: mode === 'create' ? optionalDraftList(priorityRefs) : undefined,
-				plan_refs: optionalDraftList(planRefs),
-				acceptance_criteria: optionalDraftList(acceptanceCriteria),
-			});
+			const result = await api.draftRoadmapStep(
+				targetRoadmapCode,
+				stepDraftPayload({
+					mode,
+					steps,
+					stepId,
+					defaultStepId,
+					title,
+					priorityRefs,
+					acceptanceCriteria,
+					form: { planRefs, timingFrom, timingTo, timingConfidence },
+				}),
+			);
 			setDraft(result);
 		} catch (err) {
 			setError(err instanceof Error ? err.message : String(err));
@@ -297,7 +449,7 @@ function RoadmapStepDraftPanel({ response }: { response: RoadmapsResponse }) {
 						<label htmlFor='roadmap-draft-step'>Roadmap Step</label>
 						<select
 							id='roadmap-draft-step'
-							value={stepId || defaultStepId}
+							value={effectiveStepId}
 							onChange={(event) => setStepId(event.target.value)}
 						>
 							{steps.map((step) => (
@@ -332,7 +484,7 @@ function RoadmapStepDraftPanel({ response }: { response: RoadmapsResponse }) {
 						id='roadmap-draft-plan-refs'
 						value={planRefs}
 						onChange={(event) => setPlanRefs(event.target.value)}
-						placeholder='DEV-0001'
+						placeholder='Kód plánu, jeden na řádek'
 					/>
 				</div>
 				<div className='field'>
@@ -343,6 +495,37 @@ function RoadmapStepDraftPanel({ response }: { response: RoadmapsResponse }) {
 						onChange={(event) => setAcceptanceCriteria(event.target.value)}
 						placeholder='Jeden řádek = jedno kritérium'
 					/>
+				</div>
+				<div className='field'>
+					<label htmlFor='roadmap-draft-timing-from'>Termín od (nepovinné)</label>
+					<input
+						id='roadmap-draft-timing-from'
+						value={timingFrom}
+						onChange={(event) => setTimingFrom(event.target.value)}
+						placeholder='2026-11 nebo 2026-Q4'
+					/>
+				</div>
+				<div className='field'>
+					<label htmlFor='roadmap-draft-timing-to'>Termín do</label>
+					<input
+						id='roadmap-draft-timing-to'
+						value={timingTo}
+						onChange={(event) => setTimingTo(event.target.value)}
+						placeholder='2027-Q1 nebo 2027-02'
+					/>
+				</div>
+				<div className='field'>
+					<label htmlFor='roadmap-draft-timing-confidence'>Jistota termínu</label>
+					<select
+						id='roadmap-draft-timing-confidence'
+						value={timingConfidence}
+						onChange={(event) => setTimingConfidence(event.target.value)}
+					>
+						<option value=''>neuvedeno</option>
+						<option value='committed'>závazné (committed)</option>
+						<option value='likely'>pravděpodobné (likely)</option>
+						<option value='tentative'>orientační (tentative)</option>
+					</select>
 				</div>
 			</div>
 			{error && <p className='error-text'>{error}</p>}
@@ -372,6 +555,7 @@ function RoadmapCard({ record }: { record: RoadmapApiRecord }) {
 				<span className='plan-card-title'>{roadmap.title}</span>
 			</div>
 			<div className='plan-card-meta'>
+				{roadmap.main === true ? <span className='main-roadmap-flag'>Hlavní roadmapa</span> : null}
 				<span className={`status-badge ${roadmap.status}`}>{roadmap.status}</span>
 				<span className={`priority-badge ${roadmap.priority}`}>{roadmap.priority}</span>
 				<span>vlastník {roadmap.owner}</span>
@@ -620,6 +804,8 @@ function RoadmapStepCard({
 		: [];
 	const hasHumanBlocker = issueBlockers.length > 0;
 	const hasTechnicalBlocker = step.status === 'blocked' && !hasHumanBlocker;
+	const timing = roadmapTimingWindow(step.timing);
+	const confidence = timing?.confidence ? CONFIDENCE_LABELS[timing.confidence].toLowerCase() : null;
 	return (
 		<article className='roadmap-step-card'>
 			<div className='plan-card-row'>
@@ -629,6 +815,14 @@ function RoadmapStepCard({
 			<div className='plan-card-meta'>
 				<span className={`status-badge ${step.status}`}>{step.status}</span>
 				<span>{step.executable ? 'spustitelný' : 'nespustitelný'}</span>
+				{timing ? (
+					<span>
+						· termín {formatTimingWindow(timing)}
+						{confidence ? ` (${confidence})` : ''}
+					</span>
+				) : step.timing !== undefined ? (
+					<span className='error-text'>· neplatný termín</span>
+				) : null}
 			</div>
 			<ReferenceRow label='priority_refs' values={step.priority_refs} />
 			<ReferenceRow label='plan_refs' values={step.plan_refs} />

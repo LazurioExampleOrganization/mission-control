@@ -4,6 +4,12 @@ import { devNull } from 'node:os';
 import { basename, dirname, isAbsolute, join, posix, relative, resolve, sep } from 'node:path';
 import Ajv2020 from 'ajv/dist/2020.js';
 import { parseDocument, parse as parseYaml, visit } from 'yaml';
+import {
+	isRoadmapTimingConfidence,
+	parseRoadmapPeriod,
+	ROADMAP_TIMING_CONFIDENCES,
+	roadmapPeriodsInOrder,
+} from '../roadmap-timing.ts';
 
 /** Parsed YAML/JSON content of Mission Control files; deliberately untyped. */
 type ParsedData = any;
@@ -1446,6 +1452,7 @@ function roadmapAllowedKeys(): string[] {
 		'updated_at',
 		'source_plan',
 		'summary',
+		'main',
 		'agent_lane',
 		'priorities',
 		'steps',
@@ -1596,6 +1603,7 @@ function validateRoadmapStep(
 			'title',
 			'status',
 			'executable',
+			'timing',
 			'priority_refs',
 			'plan_refs',
 			'todo_refs',
@@ -1630,6 +1638,7 @@ function validateRoadmapStep(
 		typeof step.executable !== 'boolean',
 		`steps[${index}].executable musí být boolean`,
 	);
+	validateRoadmapStepTiming(failures, path, step.timing, `steps[${index}].timing`);
 
 	validateStringArray(failures, path, step.priority_refs, `steps[${index}].priority_refs`);
 	if (Array.isArray(step.priority_refs)) {
@@ -1726,6 +1735,39 @@ function validateRoadmapStep(
 			`${path}: steps[${index}] executable=true vyžaduje aspoň jeden dohledatelný plan_refs, todo_refs nebo issue_refs odkaz`,
 		);
 	}
+}
+
+function validateRoadmapStepTiming(
+	failures: string[],
+	path: string,
+	timing: ParsedData,
+	label: string,
+): void {
+	if (timing === undefined) {
+		return;
+	}
+	if (!timing || typeof timing !== 'object' || Array.isArray(timing)) {
+		failures.push(`${path}: ${label} musí být objekt`);
+		return;
+	}
+	validateKnownKeys(failures, path, timing, ['from', 'to', 'confidence'], label);
+	const periodMessage = 'musí být měsíc YYYY-MM nebo čtvrtletí YYYY-Qn';
+	const to = parseRoadmapPeriod(timing.to);
+	pushIf(failures, path, !to, `${label}.to ${periodMessage}`);
+	const from = timing.from === undefined ? null : parseRoadmapPeriod(timing.from);
+	pushIf(failures, path, timing.from !== undefined && !from, `${label}.from ${periodMessage}`);
+	pushIf(
+		failures,
+		path,
+		timing.confidence !== undefined && !isRoadmapTimingConfidence(timing.confidence),
+		`${label}.confidence musí být jedna z: ${ROADMAP_TIMING_CONFIDENCES.join(', ')}`,
+	);
+	pushIf(
+		failures,
+		path,
+		Boolean(from && to && !roadmapPeriodsInOrder(from, to)),
+		`${label}.from nesmí začínat ani končit později než ${label}.to`,
+	);
 }
 
 function validateRoadmapAgentLane(failures: string[], path: string, agentLane: ParsedData): void {
@@ -1977,6 +2019,18 @@ export function validateRoadmapShape(
 		);
 	}
 	pushIf(failures, path, !isNonEmptyString(roadmap.summary), 'chybí summary');
+	pushIf(
+		failures,
+		path,
+		roadmap.main !== undefined && typeof roadmap.main !== 'boolean',
+		'main musí být boolean',
+	);
+	pushIf(
+		failures,
+		path,
+		roadmap.main === true && roadmap.status === 'archived',
+		'archivovaná roadmapa nemůže být hlavní (main: true)',
+	);
 	validateRoadmapAgentLane(failures, path, roadmap.agent_lane);
 	pushIf(failures, path, !isNonEmptyString(roadmap.source_plan), 'chybí source_plan');
 	if (isNonEmptyString(roadmap.source_plan) && !existingPlanCodes.has(roadmap.source_plan)) {
@@ -2083,9 +2137,19 @@ export function validateRoadmapRecords(
 	}
 	const seenIds = new Map();
 	const seenCodes = new Map();
+	let mainRoadmapPath: string | null = null;
 	for (const { path, roadmap } of records) {
 		if (!roadmap || typeof roadmap !== 'object') {
 			continue;
+		}
+		if (roadmap.main === true) {
+			if (mainRoadmapPath) {
+				failures.push(
+					`${path}: main: true už nese ${mainRoadmapPath}; hlavní roadmapa Organizace může být jen jedna`,
+				);
+			} else {
+				mainRoadmapPath = path;
+			}
 		}
 		if (isNonEmptyString(roadmap.id)) {
 			if (seenIds.has(roadmap.id)) {
@@ -2225,7 +2289,9 @@ export function buildRoadmapExecutionReport({
 	const records = Array.isArray(roadmapRecords) ? roadmapRecords : [];
 	const selectedRecord = roadmapCode
 		? records.find((record) => record.roadmap?.roadmap_code === roadmapCode)
-		: (records.find((record) => record.roadmap?.status === 'in_progress') ?? records[0]);
+		: (records.find((record) => record.roadmap?.main === true) ??
+			records.find((record) => record.roadmap?.status === 'in_progress') ??
+			records[0]);
 
 	if (!selectedRecord?.roadmap) {
 		const missingFailure = roadmapCode

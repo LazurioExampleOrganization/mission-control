@@ -1621,6 +1621,407 @@ pre.api-output.error {
   color: var(--cac-warning-fg);
 }
 
+.roadmap-main-toggle {
+  display: grid;
+  gap: 4px;
+}
+
+.roadmap-main-toggle > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ── Hlavní roadmapa: časová osa pro vedení ── */
+.main-roadmap {
+  display: grid;
+  gap: 18px;
+}
+
+.main-roadmap-heading {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.main-roadmap-title {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  max-width: 72ch;
+}
+
+.main-roadmap-title h2,
+.main-roadmap-title p {
+  margin: 0;
+}
+
+.main-roadmap-title h2 {
+  font-size: 1.35rem;
+}
+
+.main-roadmap-title p {
+  line-height: 1.55;
+}
+
+.main-roadmap-picker {
+  min-width: min(100%, 280px);
+}
+
+.main-roadmap-flag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--cac-ink);
+  color: var(--cac-surface);
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.main-roadmap-note {
+  margin: 12px 0 0;
+  padding: 8px 12px;
+  border-radius: var(--cac-radius-md);
+  background: var(--cac-info-bg);
+  color: var(--cac-info-fg);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.main-roadmap-note.warning {
+  background: var(--cac-warning-bg);
+  color: var(--cac-warning-fg);
+}
+
+.main-roadmap-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.main-roadmap-next-card strong {
+  font-size: 1rem;
+  line-height: 1.3;
+}
+
+.main-roadmap-next-card small {
+  color: var(--cac-ink-muted);
+}
+
+/* Levý sloupec nese krok, pravý pruh v čase; sloupce osy jsou čtvrtletí. */
+.main-roadmap-timeline {
+  --timeline-label-width: minmax(220px, 34%);
+  padding: 16px 20px 20px;
+}
+
+.timeline-head,
+.timeline-step-grid {
+  display: grid;
+  grid-template-columns: var(--timeline-label-width) minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
+}
+
+.timeline-head {
+  padding: 4px 0 10px;
+  border-bottom: 1px solid var(--cac-line);
+}
+
+.timeline-head-label {
+  color: var(--cac-ink-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.timeline-axis {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(var(--timeline-columns), minmax(0, 1fr));
+}
+
+.timeline-axis-column {
+  display: grid;
+  gap: 1px;
+  padding-left: 6px;
+  border-left: 1px solid var(--cac-line);
+  font-size: 0.78rem;
+  line-height: 1.2;
+}
+
+.timeline-axis-column small {
+  color: var(--cac-ink-muted);
+}
+
+.timeline-today-label {
+  position: absolute;
+  bottom: -20px;
+  left: var(--timeline-today);
+  z-index: 1;
+  transform: translateX(-50%);
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--cac-primary);
+  color: var(--cac-on-primary);
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.timeline-rows {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.timeline-group-heading {
+  display: none;
+  margin: 16px 0 4px;
+  color: var(--cac-ink-muted);
+  font-size: 0.8rem;
+}
+
+.timeline-step {
+  border-bottom: 1px solid var(--cac-line);
+}
+
+.timeline-step > summary {
+  display: block;
+  padding: 10px 0;
+  cursor: pointer;
+  list-style: none;
+}
+
+.timeline-step > summary::-webkit-details-marker {
+  display: none;
+}
+
+.timeline-step > summary:focus-visible {
+  outline: 2px solid var(--cac-primary);
+  outline-offset: 2px;
+  border-radius: var(--cac-radius-md);
+}
+
+.timeline-step.is-next > summary {
+  background: linear-gradient(90deg, var(--cac-primary-soft), transparent 70%);
+}
+
+.timeline-step-label {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.timeline-step-badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.timeline-step-title {
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.timeline-step-title::after {
+  content: "▸";
+  margin-left: 6px;
+  color: var(--cac-ink-faint);
+}
+
+.timeline-step[open] .timeline-step-title::after {
+  content: "▾";
+}
+
+.timeline-step > summary:hover .timeline-step-title {
+  color: var(--cac-primary-strong);
+}
+
+.timeline-step-when {
+  color: var(--cac-ink-muted);
+  font-size: 0.82rem;
+}
+
+.timeline-next-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border: 1px solid var(--cac-primary);
+  border-radius: 999px;
+  color: var(--cac-primary-strong);
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.timeline-track {
+  position: relative;
+  display: block;
+  height: 28px;
+  background-image: linear-gradient(to right, var(--cac-line) 1px, transparent 1px);
+  background-size: calc(100% / var(--timeline-columns)) 100%;
+}
+
+.has-today .timeline-track::after {
+  position: absolute;
+  top: -11px;
+  bottom: -11px;
+  left: var(--timeline-today);
+  width: 2px;
+  margin-left: -1px;
+  background: var(--cac-primary);
+  content: "";
+  opacity: 0.5;
+}
+
+.timeline-bar,
+.timeline-bar-sample {
+  border: 1px solid var(--cac-indigo-400);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--cac-indigo-400) 28%, var(--cac-surface));
+}
+
+.timeline-bar {
+  position: absolute;
+  top: 50%;
+  height: 14px;
+  min-width: 10px;
+  transform: translateY(-50%);
+}
+
+.timeline-bar.state-in_progress {
+  border-color: var(--cac-info-fg);
+  background: var(--cac-info-fg);
+}
+
+.timeline-bar.state-blocked {
+  border-color: var(--cac-danger-fg);
+  background: repeating-linear-gradient(
+    135deg,
+    var(--cac-danger-fg) 0 6px,
+    color-mix(in srgb, var(--cac-danger-fg) 45%, var(--cac-surface)) 6px 12px
+  );
+}
+
+.timeline-bar.state-done {
+  border-color: var(--cac-success-fg);
+  background: var(--cac-success-fg);
+}
+
+/* Jistota termínu: závazné nese obrys, orientační je přerušované a světlejší. */
+.confidence-committed {
+  box-shadow:
+    0 0 0 2px var(--cac-surface),
+    0 0 0 3px var(--cac-ink);
+}
+
+.confidence-tentative {
+  border-style: dashed;
+  opacity: 0.55;
+}
+
+.timeline-bar-sample {
+  display: inline-block;
+  width: 28px;
+  height: 10px;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.timeline-step-detail {
+  display: grid;
+  gap: 12px;
+  max-width: 80ch;
+  padding: 4px 0 16px;
+}
+
+.timeline-step-detail p {
+  margin: 0;
+  line-height: 1.55;
+}
+
+.timeline-detail-block h4 {
+  margin: 0 0 6px;
+  color: var(--cac-ink-muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.timeline-detail-block ul {
+  margin: 0;
+  padding-left: 18px;
+  line-height: 1.5;
+}
+
+.timeline-detail-block .timeline-link-list {
+  display: grid;
+  gap: 6px;
+  padding-left: 0;
+  list-style: none;
+}
+
+.timeline-link-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+}
+
+.timeline-plan-link {
+  color: var(--cac-primary-strong);
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.timeline-step-id {
+  font-family: var(--cac-font-mono);
+  font-size: 0.75rem;
+}
+
+.main-roadmap-unscheduled h3 {
+  margin: 0 0 4px;
+  font-size: 1rem;
+}
+
+.main-roadmap-unscheduled > p {
+  margin: 0 0 8px;
+}
+
+.timeline-step-grid.is-unscheduled {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.main-roadmap-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  color: var(--cac-ink-muted);
+  font-size: 0.82rem;
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+}
+
+.main-roadmap-notes {
+  display: grid;
+  gap: 6px;
+}
+
+.main-roadmap-notes p {
+  margin: 0;
+}
+
 /* Vícesloupcové rozvržení obsahu se skládá pod sebe dřív, než by se
  * sloupce s pevným minimem začaly tlačit; navigace zůstává vedle obsahu. */
 @media (max-width: 900px) {
@@ -1638,6 +2039,36 @@ pre.api-output.error {
   .work-item-links,
   .row-actions {
     justify-content: flex-start;
+  }
+}
+
+/* Na telefonu se osa mění na seznam po čtvrtletích, kdy krok přijde. */
+@media (max-width: 700px) {
+  .main-roadmap-timeline {
+    padding: 12px 14px 14px;
+  }
+  .timeline-head,
+  .timeline-track {
+    display: none;
+  }
+  .timeline-step-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .timeline-group-heading {
+    display: block;
+  }
+  .timeline-item:first-child .timeline-group-heading {
+    margin-top: 0;
+  }
+  .main-roadmap-summary {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .main-roadmap-summary .summary-card {
+    padding: 10px 12px;
+  }
+  .main-roadmap-next-card {
+    grid-column: 1 / -1;
   }
 }
 

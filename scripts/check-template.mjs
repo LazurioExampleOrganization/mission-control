@@ -773,11 +773,40 @@ function validateRoadmapPlanningModel(root, roadmapSchema, failures) {
     if (!evidenceKinds.has(kind)) failures.push(`roadmap schema evidence_refs must allow ${kind}`);
   }
 
+  // Approximate step timing and the main roadmap marker are optional, so older
+  // roadmaps keep validating; the leader timeline relies on their exact shape.
+  const timing = step?.properties?.timing;
+  const periodPattern = "^[0-9]{4}-(?:0[1-9]|1[0-2]|Q[1-4])$";
+  if (
+    timing?.type !== "object" ||
+    timing.additionalProperties !== false ||
+    !Array.isArray(timing.required) ||
+    !timing.required.includes("to") ||
+    timing.properties?.to?.pattern !== periodPattern ||
+    timing.properties?.from?.pattern !== periodPattern
+  ) {
+    failures.push("roadmap schema Roadmap Step timing must stay a month or quarter window (from, to)");
+  }
+  const confidenceValues = new Set(timing?.properties?.confidence?.enum ?? []);
+  for (const value of ["committed", "likely", "tentative"]) {
+    if (!confidenceValues.has(value)) {
+      failures.push(`roadmap schema Roadmap Step timing confidence must allow ${value}`);
+    }
+  }
+  if (roadmapSchema.properties?.main?.type !== "boolean") {
+    failures.push("roadmap schema must keep the boolean main roadmap marker");
+  }
+  if (required.has("main") || stepRequired.has("timing")) {
+    failures.push("roadmap schema must keep main and timing optional for older roadmaps");
+  }
+
   const docs = existsSync(join(root, "docs/roadmap-planning-model.md"))
     ? readText(root, "docs/roadmap-planning-model.md")
     : "";
   if (!docs.includes("Roadmap Priority")) failures.push("roadmap planning docs must explain Roadmap Priority");
   if (!docs.includes("Roadmap Step")) failures.push("roadmap planning docs must explain Roadmap Step");
+  if (!docs.includes("Approximate timing")) failures.push("roadmap planning docs must explain Approximate timing");
+  if (!docs.includes("Main roadmap")) failures.push("roadmap planning docs must explain Main roadmap");
 }
 
 function validatePlanPrefixSchema(schema, label, failures) {
@@ -1630,6 +1659,11 @@ export function validateTemplate(root = process.cwd()) {
   const roadmapSchema = existsSync(join(root, "schemas/mission-control-roadmap.schema.json"))
     ? parseJsonFile(root, "schemas/mission-control-roadmap.schema.json", failures)
     : null;
+  const organizationRoadmapSchema = existsSync(
+    join(root, "templates/organization-data/schemas/mission-control-roadmap.schema.json"),
+  )
+    ? parseJsonFile(root, "templates/organization-data/schemas/mission-control-roadmap.schema.json", failures)
+    : null;
   const planSchema = existsSync(join(root, "schemas/mission-control-plan.schema.json"))
     ? parseJsonFile(root, "schemas/mission-control-plan.schema.json", failures)
     : null;
@@ -1674,6 +1708,13 @@ export function validateTemplate(root = process.cwd()) {
     JSON.stringify(planSchema) !== JSON.stringify(organizationPlanSchema)
   ) {
     failures.push("Organization data plan schema must stay identical to the app/code plan schema");
+  }
+  if (
+    roadmapSchema &&
+    organizationRoadmapSchema &&
+    JSON.stringify(roadmapSchema) !== JSON.stringify(organizationRoadmapSchema)
+  ) {
+    failures.push("Organization data roadmap schema must stay identical to the app/code roadmap schema");
   }
   validateRoadmapPlanningModel(root, roadmapSchema, failures);
   validateRuntimeContract(packageJson, failures);
