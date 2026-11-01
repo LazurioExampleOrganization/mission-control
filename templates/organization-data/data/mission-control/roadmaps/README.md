@@ -9,3 +9,5 @@ Roadmaps follow `schemas/mission-control-roadmap.schema.json` from the app/code 
 - Roadmap Priority records explain ranked intent.
 - Roadmap Step records route execution and must declare whether they are executable.
 - Done steps need evidence references.
+- A step may say approximately when it lands with `timing` (`to: 2027-Q1`, optionally `from: 2026-11` and `confidence: committed | likely | tentative`).
+- At most one roadmap sets `main: true`; it is the Organization's main roadmap shown first in Mission Control. The bundled `RM-0001` fixture carries the marker, so remove it there when another roadmap becomes the main one.

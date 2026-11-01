@@ -52,6 +52,12 @@ function useMediaQuery(query: string): boolean {
 
 function SidebarIcon({ name }: { name: IconName }) {
 	switch (name) {
+		case 'timeline':
+			return (
+				<svg viewBox='0 0 24 24' fill='none' aria-hidden='true'>
+					<path d='M4 4v16M8 7h6M11 12h9M8 17h5' />
+				</svg>
+			);
 		case 'roadmap':
 			return (
 				<svg viewBox='0 0 24 24' fill='none' aria-hidden='true'>

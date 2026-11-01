@@ -515,6 +515,127 @@ describe('Mission Control roadmap validator parity', () => {
 		}
 	});
 
+	test('API and standalone validator share step timing and main roadmap rules', () => {
+		const tempRoot = mkdtempSync(path.join(tmpdir(), 'mission-control-roadmap-timing-'));
+		const dataRoot = path.join(tempRoot, 'mission-control-data');
+		const roadmapsRoot = path.join(dataRoot, 'data/mission-control/roadmaps/2026');
+		const roadmapPath = path.join(roadmapsRoot, 'RM-0001-template-runtime.yaml');
+		const validateBoth = () => {
+			const standalone = spawnSync(
+				process.execPath,
+				['scripts/validate-mission-control-data.mjs'],
+				{ cwd: dataRoot, encoding: 'utf8' },
+			);
+			const apiProbe = Bun.spawnSync({
+				cmd: [
+					process.execPath,
+					'--eval',
+					`const { buildRoadmapsResponse } = await import(${JSON.stringify(roadmapsModuleUrl)}); console.log(JSON.stringify(buildRoadmapsResponse()));`,
+				],
+				env: {
+					...process.env,
+					MISSION_CONTROL_ROOT: dataRoot,
+					MISSION_CONTROL_WORKSPACE_ROOT: tempRoot,
+				},
+				stdout: 'pipe',
+				stderr: 'pipe',
+			});
+			expect(new TextDecoder().decode(apiProbe.stderr)).toBe('');
+			expect(apiProbe.exitCode).toBe(0);
+			const payload = JSON.parse(new TextDecoder().decode(apiProbe.stdout)) as {
+				validation: { ok: boolean; failures: string[] };
+			};
+			return {
+				standaloneStatus: standalone.status,
+				standaloneOutput: `${standalone.stdout}\n${standalone.stderr}`,
+				api: payload.validation,
+			};
+		};
+		try {
+			cpSync(templateDataRoot, dataRoot, { recursive: true });
+			const configPath = path.join(dataRoot, 'data/mission-control/mission-control.config.json');
+			const config = JSON.parse(readFileSync(configPath, 'utf8'));
+			config.organization_admin = 'organization-steward';
+			useLegacyCapabilityWriter(config);
+			writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`);
+			const repositoryDbPath = path.join(dataRoot, 'repository-db.yaml');
+			writeFileSync(
+				repositoryDbPath,
+				readFileSync(repositoryDbPath, 'utf8').replace(
+					'git@github.com:REPLACE_WITH_ORG/mission-control-data.git',
+					'git@github.com:ExampleOrganization/mission-control-data.git',
+				),
+			);
+			git(dataRoot, 'init', '-q');
+			git(dataRoot, 'add', '.');
+			commitFixture(dataRoot, 'initialize roadmap timing fixture');
+			const fixture = parseYaml(readFileSync(roadmapPath, 'utf8'));
+
+			// The bundled fixture already uses main: true and step timing.
+			expect(fixture.main).toBe(true);
+			expect(fixture.steps[1].timing).toEqual({
+				from: '2026-02',
+				to: '2026-Q2',
+				confidence: 'likely',
+			});
+			const current = validateBoth();
+			expect(current.standaloneOutput).toContain('Mission Control data validation OK');
+			expect(current.standaloneStatus).toBe(0);
+			expect(current.api).toEqual({ ok: true, failures: [] });
+
+			// Older roadmaps without timing or a main flag stay valid.
+			const legacy = structuredClone(fixture);
+			delete legacy.main;
+			for (const step of legacy.steps) delete step.timing;
+			writeFileSync(roadmapPath, stringifyYaml(legacy));
+			const older = validateBoth();
+			expect(older.standaloneOutput).toContain('Mission Control data validation OK');
+			expect(older.standaloneStatus).toBe(0);
+			expect(older.api).toEqual({ ok: true, failures: [] });
+
+			const broken = structuredClone(fixture);
+			broken.steps[0].timing = { to: '2026-13' };
+			// Starts before `to` but ends after it: only the full window rule rejects it.
+			broken.steps[1].timing = { from: '2026-Q4', to: '2026-11', confidence: 'sure' };
+			writeFileSync(roadmapPath, stringifyYaml(broken));
+			const second = structuredClone(fixture);
+			second.id = 'mcroadmap-rm-0002';
+			second.roadmap_code = 'RM-0002';
+			second.status = 'archived';
+			writeFileSync(path.join(roadmapsRoot, 'RM-0002-archived-main.yaml'), stringifyYaml(second));
+
+			const invalid = validateBoth();
+			expect(invalid.standaloneStatus).not.toBe(0);
+			expect(invalid.standaloneOutput).toContain(
+				'RM-0001-template-runtime.yaml: roadmap schema /steps/0/timing/to must match pattern',
+			);
+			expect(invalid.standaloneOutput).toContain(
+				'RM-0001-template-runtime.yaml: roadmap schema /steps/1/timing/confidence must be equal to one of the allowed values',
+			);
+			expect(invalid.standaloneOutput).toContain(
+				'RM-0001-template-runtime.yaml: steps[1].timing.from must not start or end after steps[1].timing.to',
+			);
+			expect(invalid.standaloneOutput).toContain(
+				'RM-0002-archived-main.yaml: an archived roadmap cannot be the main roadmap (main: true)',
+			);
+			expect(invalid.standaloneOutput).toContain(
+				'RM-0002-archived-main.yaml: main: true is already set by data/mission-control/roadmaps/2026/RM-0001-template-runtime.yaml',
+			);
+			expect(invalid.api.ok).toBe(false);
+			for (const expected of [
+				'RM-0001-template-runtime.yaml: steps[0].timing.to musí být měsíc YYYY-MM nebo čtvrtletí YYYY-Qn',
+				'RM-0001-template-runtime.yaml: steps[1].timing.confidence musí být jedna z: committed, likely, tentative',
+				'RM-0001-template-runtime.yaml: steps[1].timing.from nesmí začínat ani končit později než steps[1].timing.to',
+				'RM-0002-archived-main.yaml: archivovaná roadmapa nemůže být hlavní (main: true)',
+				'RM-0002-archived-main.yaml: main: true už nese data/mission-control/roadmaps/2026/RM-0001-template-runtime.yaml',
+			]) {
+				expect(invalid.api.failures.some((failure) => failure.includes(expected))).toBe(true);
+			}
+		} finally {
+			rmSync(tempRoot, { recursive: true, force: true });
+		}
+	});
+
 	test('API and standalone validator reject forged published evidence and accept the staged atomic publish', () => {
 		const tempRoot = mkdtempSync(path.join(tmpdir(), 'mission-control-roadmap-staging-'));
 		const dataRoot = path.join(tempRoot, 'mission-control-data');

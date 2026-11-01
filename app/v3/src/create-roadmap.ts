@@ -31,6 +31,7 @@ export type RoadmapDraftPayload = {
 	source_plan?: unknown;
 	roadmap_code?: unknown;
 	title?: unknown;
+	main?: unknown;
 	owner?: unknown;
 	priority?: unknown;
 	status?: unknown;
@@ -212,6 +213,9 @@ export function buildNewRoadmapDraft(payload: RoadmapDraftPayload): RoadmapDraft
 		throw new RoadmapCreateDraftError('roadmap_exists', 409, `Roadmap ${roadmapCode} už existuje.`);
 	}
 	const title = nonEmptyString(payload.title) ?? `Roadmap: ${sourcePlan.title}`;
+	if (payload.main !== undefined && typeof payload.main !== 'boolean') {
+		throw new RoadmapCreateDraftError('invalid_field', 400, 'main musí být boolean.');
+	}
 	const priority = parsePriority(payload.priority, sourcePlan.priority);
 	const date = today();
 	const roadmap: MissionControlRoadmap = {
@@ -219,6 +223,7 @@ export function buildNewRoadmapDraft(payload: RoadmapDraftPayload): RoadmapDraft
 		id: `mcroadmap-${roadmapCode.toLowerCase()}`,
 		roadmap_code: roadmapCode,
 		title,
+		...(payload.main === true ? { main: true } : {}),
 		status: parseStatus(payload.status),
 		owner: optionalString(payload.owner) ?? sourcePlan.owner,
 		priority,

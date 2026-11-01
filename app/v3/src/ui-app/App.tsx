@@ -12,6 +12,7 @@ import { loadInitialAppData } from './initial-load.ts';
 import { Layout } from './Layout.tsx';
 import { type PageId, STATUS_FILTER_TO_PLAN_STATUS } from './navigation.ts';
 import { AgentWorkPage } from './pages/AgentWork.tsx';
+import { MainRoadmapPage } from './pages/MainRoadmap.tsx';
 import { NewPlanPage } from './pages/NewPlan.tsx';
 import { PlanDetail } from './pages/PlanDetail.tsx';
 import { PlanList } from './pages/PlanList.tsx';
@@ -29,13 +30,19 @@ function errorMessage(error: unknown): string {
 
 function pageTitle(page: PageId): { title: string; subtitle: string } {
 	switch (page) {
+		case 'main-roadmap':
+			return {
+				title: 'Hlavní roadmapa',
+				subtitle:
+					'Kdy přibližně přijde která změna, seřazeno podle termínu. Podle této osy můžete plánovat komunikaci i přípravu.',
+			};
 		case 'roadmaps':
 			return {
 				title: 'Roadmaps',
 				subtitle: 'RM roadmapy, priority, next runnable step a read-only detail kroků',
 			};
 		case 'plans-all':
-			return { title: 'Roadmapa', subtitle: 'Všechny Mission Control plány podle priority' };
+			return { title: 'Plány', subtitle: 'Všechny Mission Control plány podle priority' };
 		case 'plans-shaping':
 			return { title: 'Shaping', subtitle: 'Plány v draftu, scope se ještě doplňuje' };
 		case 'plans-ready':
@@ -175,12 +182,24 @@ export default function App() {
 	function renderContent() {
 		if (loading) return <div className='panel'>Načítám…</div>;
 		if (error) return <div className='panel error-text'>{error}</div>;
-		if (selectedDevCode && isPlanListPage) {
+		if (selectedDevCode && (isPlanListPage || activePage === 'main-roadmap')) {
 			return (
 				<PlanDetail
 					devCode={selectedDevCode}
 					onBack={() => setSelectedDevCode(null)}
+					backLabel={activePage === 'main-roadmap' ? '← Zpět na roadmapu' : undefined}
 					onSaved={loadAll}
+				/>
+			);
+		}
+		if (activePage === 'main-roadmap') {
+			return (
+				<MainRoadmapPage
+					response={roadmaps}
+					plans={plans}
+					error={roadmapsError}
+					onOpenPlan={handleSelectPlan}
+					onOpenRoadmaps={() => handleNavigate('roadmaps')}
 				/>
 			);
 		}
@@ -257,7 +276,9 @@ export default function App() {
 				<h1 className='page-title'>{title}</h1>
 				<p className='page-subtitle'>{subtitle}</p>
 			</header>
-			<SummaryStrip plans={plans} board={board} agentWork={agentWork} />
+			{activePage === 'main-roadmap' ? null : (
+				<SummaryStrip plans={plans} board={board} agentWork={agentWork} />
+			)}
 			{renderContent()}
 		</Layout>
 	);

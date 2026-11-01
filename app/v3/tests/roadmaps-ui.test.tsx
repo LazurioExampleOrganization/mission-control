@@ -1,7 +1,16 @@
 import { describe, expect, test } from 'bun:test';
 import { renderToStaticMarkup } from 'react-dom/server';
+import type { RoadmapStep } from '../src/roadmap-model.ts';
 import type { RoadmapsResponse } from '../src/ui-app/api.ts';
-import { optionalDraftList, RoadmapsPage } from '../src/ui-app/pages/Roadmaps.tsx';
+import {
+	optionalDraftList,
+	optionalTimingDraft,
+	RoadmapsPage,
+	selectedStepId,
+	stepDraftChanges,
+	stepDraftDefaults,
+	stepDraftPayload,
+} from '../src/ui-app/pages/Roadmaps.tsx';
 
 const roadmapFixture: RoadmapsResponse['roadmaps'][number] = {
 	relativePath: 'roadmaps/2026/RM-0002-mission-control-v3.yaml',
@@ -151,6 +160,180 @@ describe('Mission Control Roadmaps UI', () => {
 		expect(optionalDraftList('ACME-0022\nACME-0025')).toEqual(['ACME-0022', 'ACME-0025']);
 	});
 
+	test('sends step timing only when a timing field is filled', () => {
+		expect(optionalTimingDraft('', '  ', '')).toBeUndefined();
+		expect(optionalTimingDraft('', '2027-Q1', '')).toEqual({ to: '2027-Q1' });
+		expect(optionalTimingDraft(' 2026-11 ', '2027-Q1', 'likely')).toEqual({
+			from: '2026-11',
+			to: '2027-Q1',
+			confidence: 'likely',
+		});
+		expect(optionalTimingDraft('2026-11', '', '')).toEqual({ from: '2026-11' });
+	});
+
+	test('editing the timing of a step that is not the next one keeps its own plan_refs', () => {
+		// The roadmap's next runnable step has plan refs; the step being edited has none.
+		const later: RoadmapStep = {
+			id: 'step-007',
+			title: 'Later step',
+			status: 'shaping',
+			executable: false,
+		};
+		const form = {
+			...stepDraftDefaults(later),
+			timingTo: '2027-Q1',
+			timingConfidence: 'tentative',
+		};
+		expect(stepDraftDefaults(later).planRefs).toBe('');
+		expect(stepDraftChanges('update', later, form)).toEqual({
+			plan_refs: undefined,
+			timing: { to: '2027-Q1', confidence: 'tentative' },
+		});
+	});
+
+	test('an update sends plan_refs or timing only when they differ from the selected step', () => {
+		const step: RoadmapStep = {
+			id: 'step-003',
+			title: 'Step with references',
+			status: 'ready',
+			executable: true,
+			plan_refs: ['ACME-0010', 'ACME-0022'],
+			timing: { to: '2026-Q4', confidence: 'likely' },
+		};
+		const unchanged = stepDraftDefaults(step);
+		expect(unchanged).toEqual({
+			planRefs: 'ACME-0010\nACME-0022',
+			timingFrom: '',
+			timingTo: '2026-Q4',
+			timingConfidence: 'likely',
+		});
+		expect(stepDraftChanges('update', step, unchanged)).toEqual({
+			plan_refs: undefined,
+			timing: undefined,
+		});
+		expect(
+			stepDraftChanges('update', step, { ...unchanged, planRefs: 'ACME-0010\nACME-0030' }),
+		).toEqual({
+			plan_refs: ['ACME-0010', 'ACME-0030'],
+			timing: undefined,
+		});
+		expect(stepDraftChanges('update', step, { ...unchanged, timingTo: '2027-Q1' })).toEqual({
+			plan_refs: undefined,
+			timing: { to: '2027-Q1', confidence: 'likely' },
+		});
+	});
+
+	test('emptying a prefilled field removes it from the step', () => {
+		const step: RoadmapStep = {
+			id: 'step-003',
+			title: 'Step with references',
+			status: 'ready',
+			executable: false,
+			plan_refs: ['ACME-0010'],
+			timing: { to: '2026-Q4' },
+		};
+		const emptied = { planRefs: '', timingFrom: '', timingTo: '', timingConfidence: '' };
+		expect(stepDraftChanges('update', step, emptied)).toEqual({ plan_refs: null, timing: null });
+		// A step without them has nothing to remove.
+		const bare: RoadmapStep = {
+			id: 'step-004',
+			title: 'Bare step',
+			status: 'shaping',
+			executable: false,
+		};
+		expect(stepDraftChanges('update', bare, emptied)).toEqual({
+			plan_refs: undefined,
+			timing: undefined,
+		});
+	});
+
+	test('the form never edits a step id chosen on another roadmap', () => {
+		// Roadmap B has the same default step as A but no step-007, which was chosen on A.
+		const roadmapB: RoadmapStep[] = [
+			{
+				id: 'step-001',
+				title: 'First',
+				status: 'ready',
+				executable: false,
+				plan_refs: ['ACME-0010'],
+				timing: { to: '2026-Q4' },
+			},
+			{ id: 'step-002', title: 'Second', status: 'shaping', executable: false },
+		];
+		expect(selectedStepId(roadmapB, 'step-007', 'step-001')).toBe('step-001');
+		expect(selectedStepId(roadmapB, 'step-002', 'step-001')).toBe('step-002');
+		expect(selectedStepId([], 'step-007', '')).toBe('');
+		// The request goes to roadmap B's step with that step's own values, not to step-007.
+		const payload = stepDraftPayload({
+			mode: 'update',
+			steps: roadmapB,
+			stepId: 'step-007',
+			defaultStepId: 'step-001',
+			title: '',
+			priorityRefs: '',
+			acceptanceCriteria: '',
+			form: { ...stepDraftDefaults(roadmapB[0]), timingTo: '2027-Q1' },
+		});
+		expect(payload.step_id).toBe('step-001');
+		expect(payload.plan_refs).toBeUndefined();
+		expect(payload.timing).toEqual({ to: '2027-Q1' });
+	});
+
+	test('a new step sends the plan_refs and timing that are filled in', () => {
+		const form = {
+			planRefs: 'ACME-0040',
+			timingFrom: '',
+			timingTo: '2027-Q2',
+			timingConfidence: '',
+		};
+		expect(stepDraftChanges('create', undefined, form)).toEqual({
+			plan_refs: ['ACME-0040'],
+			timing: { to: '2027-Q2' },
+		});
+		expect(stepDraftDefaults(undefined)).toEqual({
+			planRefs: '',
+			timingFrom: '',
+			timingTo: '',
+			timingConfidence: '',
+		});
+	});
+
+	test('shows the main roadmap flag, step timing and the timing draft fields', () => {
+		const timedRoadmap = {
+			...roadmapFixture,
+			roadmap: {
+				...roadmapFixture.roadmap,
+				main: true,
+				steps: [
+					{
+						...roadmapFixture.roadmap.steps[0],
+						timing: { from: '2026-11', to: '2027-Q1', confidence: 'likely' },
+					},
+					{
+						...roadmapFixture.roadmap.steps[0],
+						id: 'step-005',
+						timing: { to: 'soon' },
+					},
+				],
+			},
+		} as unknown as RoadmapsResponse['roadmaps'][number];
+
+		const markup = renderToStaticMarkup(
+			<RoadmapsPage
+				response={{ roadmaps: [timedRoadmap], validation: { ok: true, failures: [] } }}
+				loading={false}
+				error={null}
+			/>,
+		);
+
+		expect(markup).toContain('main-roadmap-flag');
+		expect(markup).toContain('termín listopad 2026 – Q1 2027 (pravděpodobné)');
+		expect(markup).toContain('neplatný termín');
+		expect(markup).toContain('Termín do');
+		expect(markup).toContain('Jistota termínu');
+		expect(markup).toContain('Hlavní roadmapa Organizace');
+	});
+
 	test('keeps the first roadmap draft action available in an empty repository', () => {
 		const markup = renderToStaticMarkup(
 			<RoadmapsPage
@@ -178,6 +361,10 @@ describe('Mission Control Roadmaps UI', () => {
 		expect(markup).toContain('Mission Control v3');
 		expect(markup).toContain('Next runnable step');
 		expect(markup).toContain('step-004');
+		// The step form starts on the next step with that step's own plan refs.
+		expect(markup).toMatch(
+			/<textarea id="roadmap-draft-plan-refs"[^>]*>ACME-0010\nACME-0022<\/textarea>/,
+		);
 		expect(markup).toContain('priority-002');
 		expect(markup).toContain('ACME-0010');
 		expect(markup).toContain('task-2026-06-21-001');

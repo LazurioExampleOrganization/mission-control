@@ -2,6 +2,7 @@ schema_version: companiesascode.mission_control.roadmap.v1
 id: mcroadmap-rm-0001
 roadmap_code: RM-0001
 title: Template Mission Control runtime roadmap
+main: true
 status: in_progress
 owner: template-steward
 priority: high
@@ -30,6 +31,9 @@ steps:
     title: Keep generic fixture readable
     status: done
     executable: true
+    timing:
+      to: 2026-Q1
+      confidence: committed
     priority_refs:
       - priority-001
     plan_refs:
@@ -44,6 +48,10 @@ steps:
     title: Exercise next-step and close-gate behavior
     status: ready
     executable: true
+    timing:
+      from: 2026-02
+      to: 2026-Q2
+      confidence: likely
     priority_refs:
       - priority-001
     plan_refs:

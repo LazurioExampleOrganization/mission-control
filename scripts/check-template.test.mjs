@@ -8536,12 +8536,58 @@ test("roadmap schema must keep done evidence non-empty", () => {
   assert.ok(failures.some((failure) => failure.includes("roadmap schema evidence_refs must have minItems 1")), failures.join("\n"));
 });
 
+test("roadmap schema must keep optional step timing and the main roadmap marker", () => {
+  const failures = withTempTemplate((tempRoot) => {
+    for (const schemaPath of [
+      join(tempRoot, "schemas/mission-control-roadmap.schema.json"),
+      join(tempRoot, "templates/organization-data/schemas/mission-control-roadmap.schema.json"),
+    ]) {
+      const schema = JSON.parse(readFileSync(schemaPath, "utf8"));
+      const timing = schema.properties.steps.items.properties.timing;
+      timing.properties.to.pattern = "^[0-9]{4}-[0-9]{2}-[0-9]{2}$";
+      timing.properties.confidence.enum = ["committed", "likely"];
+      delete schema.properties.main;
+      writeFileSync(schemaPath, `${JSON.stringify(schema, null, 2)}\n`);
+    }
+  });
+  assert.ok(failures.some((failure) => failure.includes("Roadmap Step timing must stay a month or quarter window")), failures.join("\n"));
+  assert.ok(failures.some((failure) => failure.includes("timing confidence must allow tentative")), failures.join("\n"));
+  assert.ok(failures.some((failure) => failure.includes("must keep the boolean main roadmap marker")), failures.join("\n"));
+  assert.ok(!failures.some((failure) => failure.includes("roadmap schema must stay identical")), failures.join("\n"));
+});
+
+test("roadmap schema must keep timing and the main marker optional for older roadmaps", () => {
+  const failures = withTempTemplate((tempRoot) => {
+    const schemaPath = join(tempRoot, "schemas/mission-control-roadmap.schema.json");
+    const schema = JSON.parse(readFileSync(schemaPath, "utf8"));
+    schema.required.push("main");
+    schema.properties.steps.items.required.push("timing");
+    writeFileSync(schemaPath, `${JSON.stringify(schema, null, 2)}\n`);
+  });
+  assert.ok(failures.some((failure) => failure.includes("must keep main and timing optional for older roadmaps")), failures.join("\n"));
+});
+
+test("Organization data roadmap schema stays identical to the app/code roadmap schema", () => {
+  const failures = withTempTemplate((tempRoot) => {
+    const schemaPath = join(tempRoot, "templates/organization-data/schemas/mission-control-roadmap.schema.json");
+    const schema = JSON.parse(readFileSync(schemaPath, "utf8"));
+    delete schema.properties.steps.items.properties.timing;
+    writeFileSync(schemaPath, `${JSON.stringify(schema, null, 2)}\n`);
+  });
+  assert.ok(
+    failures.some((failure) => failure.includes("Organization data roadmap schema must stay identical to the app/code roadmap schema")),
+    failures.join("\n"),
+  );
+});
+
 test("roadmap planning model docs are part of the template contract", () => {
   const failures = withTempTemplate((tempRoot) => {
     writeFileSync(join(tempRoot, "docs/roadmap-planning-model.md"), "# Roadmaps\n\nMissing the required vocabulary.\n");
   });
   assert.ok(failures.some((failure) => failure.includes("roadmap planning docs must explain Roadmap Priority")), failures.join("\n"));
   assert.ok(failures.some((failure) => failure.includes("roadmap planning docs must explain Roadmap Step")), failures.join("\n"));
+  assert.ok(failures.some((failure) => failure.includes("roadmap planning docs must explain Approximate timing")), failures.join("\n"));
+  assert.ok(failures.some((failure) => failure.includes("roadmap planning docs must explain Main roadmap")), failures.join("\n"));
 });
 
 test("operating manual is part of the shared template and Organization contract", () => {
