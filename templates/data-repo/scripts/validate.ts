@@ -7,7 +7,7 @@
 // across records (references between roadmaps and plans) are checked by the
 // App (`bun run validate` in app/v3).
 import { lstatSync, readdirSync, readFileSync } from "node:fs";
-import { join, relative } from "node:path";
+import { basename, join } from "node:path";
 
 type Schema = {
   type?: string | string[];
@@ -151,7 +151,7 @@ export function validateRepository(root: string): string[] {
       if (typeof code === "string") {
         if (codes.has(code)) errors.push(`${file}: ${code} is used by another record`);
         codes.add(code);
-        if (!relative(directory, file).split("/").at(-1)?.startsWith(`${code}`)) {
+        if (!basename(file).startsWith(code)) {
           errors.push(`${file}: the file name must start with ${code}`);
         }
       }

@@ -1,5 +1,13 @@
 import { spawnSync } from "node:child_process";
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  cpSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DATA_REPO_TEMPLATE, SAMPLE_DATA } from "./seed.ts";
@@ -30,7 +38,9 @@ function identity(path: string) {
 }
 
 export function createFixtureRepo(options: { sample?: boolean } = {}): FixtureRepo {
-  const root = mkdtempSync(join(tmpdir(), "mission-control-test-"));
+  // The long, real path: Windows runners hand out an 8.3 short temp path
+  // (RUNNER~1) that Git reports in its long form.
+  const root = mkdtempSync(join(realpathSync.native(tmpdir()), "mission-control-test-"));
   const origin = join(root, "origin.git");
   git(root, ["init", "--quiet", "--bare", "--initial-branch", "v3", origin]);
   const moduleRoot = join(root, "module");
