@@ -36,8 +36,8 @@ Do all of this live, before showing a plan.
    path, and on GitHub for `<Org>/mission-control` and
    `<Org>/mission-control-data`.
    - Nothing there: go on with the slug `mission-control`.
-   - The Organization already runs Mission Control (a fork of
-     `Lazurio/mission-control` 3.x or an earlier release of this template):
+   - The Organization already runs Mission Control (a 3.x release or an
+     earlier release of this template):
      this is not a new adoption. Take the release into the existing Module as
      an update ([`extending.md`](extending.md), "Taking a template release")
      and tell the person.
