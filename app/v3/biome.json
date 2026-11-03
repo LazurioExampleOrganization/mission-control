@@ -1,95 +1,11 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.4.15/schema.json",
-  "vcs": {
-    "enabled": true,
-    "clientKind": "git",
-    "useIgnoreFile": true
-  },
-  "files": {
-    "includes": [
-      "**",
-      "!dist",
-      "!node_modules",
-      "!.build",
-      "!*.lock",
-      "!bun.lock",
-      "!*.tsbuildinfo"
-    ]
-  },
-  "formatter": {
-    "enabled": true,
-    "formatWithErrors": false,
-    "indentStyle": "tab",
-    "indentWidth": 2,
-    "lineEnding": "lf",
-    "lineWidth": 100,
-    "attributePosition": "auto"
-  },
-  "assist": {
-    "actions": {
-      "source": {
-        "organizeImports": "on"
-      }
-    }
-  },
+  "$schema": "https://biomejs.dev/schemas/2.6.4/schema.json",
+  "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
+  "files": { "includes": ["**", "!dist", "!node_modules", "!**/*.css"] },
+  "formatter": { "enabled": true, "indentStyle": "space", "indentWidth": 2, "lineWidth": 100 },
   "linter": {
     "enabled": true,
-    "domains": {
-      "react": "all"
-    },
-    "rules": {
-      "recommended": true,
-      "style": {
-        "useConst": "error"
-      },
-      "suspicious": {
-        "noConsole": "off",
-        "noExplicitAny": "off",
-        "noArrayIndexKey": "warn",
-        "useIterableCallbackReturn": "warn"
-      },
-      "correctness": {
-        "useUniqueElementIds": "warn"
-      },
-      "a11y": {
-        "noLabelWithoutControl": "warn",
-        "noAutofocus": "warn"
-      }
-    }
+    "rules": { "preset": "recommended", "suspicious": { "noExplicitAny": "error" } }
   },
-  "javascript": {
-    "formatter": {
-      "quoteStyle": "single",
-      "jsxQuoteStyle": "single",
-      "quoteProperties": "asNeeded",
-      "trailingCommas": "all",
-      "semicolons": "always",
-      "arrowParentheses": "always",
-      "bracketSpacing": true,
-      "bracketSameLine": false
-    }
-  },
-  "css": {
-    "formatter": {
-      "enabled": false
-    }
-  },
-  "overrides": [
-    {
-      "includes": ["tests/**"],
-      "linter": {
-        "rules": {
-          "correctness": {
-            "useHookAtTopLevel": "off"
-          }
-        }
-      }
-    }
-  ],
-  "json": {
-    "formatter": {
-      "indentStyle": "space",
-      "indentWidth": 2
-    }
-  }
+  "assist": { "actions": { "source": { "organizeImports": "on" } } }
 }

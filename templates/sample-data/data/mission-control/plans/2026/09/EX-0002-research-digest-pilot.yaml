@@ -1,0 +1,42 @@
+schema_version: companiesascode.mission_control.plan.v2
+id: mcplan-ex-0002
+dev_code: EX-0002
+title: Weekly research digest pilot
+status: in_progress
+owner: robinlee
+priority: high
+priority_rank: 20
+created_at: 2026-09-15
+updated_at: 2026-10-28
+context: >-
+  The example Organization looks for verifiable ways in which agents can create
+  value. A weekly digest of public research is a small, measurable offer.
+current_problem: >-
+  Nobody knows yet whether readers would pay for a curated digest, or how much
+  agent time one issue takes.
+target_state: >-
+  Four issues published to a test audience, with the time per issue and the
+  reader response measured.
+scope:
+  in:
+    - Four weekly issues for a test audience of twenty readers
+    - Time tracking per issue, split into agent and human review time
+  out:
+    - Payments and a public sign-up page
+acceptance_criteria:
+  - Four issues are published on schedule.
+  - Every issue lists its sources and the date they were checked.
+  - The pilot report states time per issue and reader response.
+validation:
+  - The pilot report is reviewed in the weekly planning review.
+risk_notes:
+  - A digest that only restates abstracts is not worth paying for; review each issue for original synthesis.
+open_questions:
+  - Is twenty readers enough to read a signal?
+proposed_tasks:
+  - title: Draft the issue template
+    summary: Sections, source list and the review checklist of one issue.
+    priority: high
+  - title: Recruit the test audience
+    summary: Invite twenty readers from the fictional partner list.
+    priority: medium

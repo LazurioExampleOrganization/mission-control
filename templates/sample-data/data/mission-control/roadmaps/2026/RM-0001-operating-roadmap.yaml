@@ -1,0 +1,76 @@
+schema_version: companiesascode.mission_control.roadmap.v1
+id: mcroadmap-rm-0001
+roadmap_code: RM-0001
+title: Operating roadmap 2026–2027
+main: true
+status: in_progress
+owner: alexmorgan
+priority: high
+created_at: 2026-09-01
+updated_at: 2026-10-30
+source_plan: EX-0003
+summary: >-
+  From an Organization that plans in chat to one that plans in Mission Control,
+  then the first measured offer.
+priorities:
+  - id: priority-001
+    title: Colleagues and agents share one source of truth
+    rank: 1
+    rationale: Every later step depends on plans that are current.
+  - id: priority-002
+    title: One measured offer before a second one
+    rank: 2
+steps:
+  - id: step-001
+    title: Publish the knowledge base for new colleagues
+    status: done
+    executable: true
+    timing:
+      from: 2026-09
+      to: 2026-10
+      confidence: committed
+    priority_refs:
+      - priority-001
+    plan_refs:
+      - EX-0001
+    evidence_refs:
+      - label: Onboarding checklist completed by two newcomers
+        kind: validation
+        path: data/mission-control/plans/2026/09/EX-0001-knowledge-base-for-new-colleagues.yaml
+  - id: step-002
+    title: Run the research digest pilot
+    status: in_progress
+    executable: true
+    timing:
+      from: 2026-10
+      to: 2026-Q4
+      confidence: likely
+    priority_refs:
+      - priority-002
+    plan_refs:
+      - EX-0002
+    acceptance_criteria:
+      - Four issues published and the pilot report reviewed.
+  - id: step-003
+    title: Start the weekly planning review
+    status: ready
+    executable: true
+    timing:
+      to: 2026-Q4
+      confidence: committed
+    priority_refs:
+      - priority-001
+    plan_refs:
+      - EX-0003
+  - id: step-004
+    title: Decide on a second sales channel
+    status: shaping
+    executable: false
+    timing:
+      from: 2027-01
+      to: 2027-Q1
+      confidence: tentative
+    priority_refs:
+      - priority-002
+    plan_refs:
+      - EX-0004
