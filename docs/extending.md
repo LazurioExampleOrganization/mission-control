@@ -56,10 +56,11 @@ git merge --no-ff <commit>
 
 ## Stack profile releases
 
-The template follows the stack profile "app with data, v3": exact versions of
+The template follows the stack profile [`app-data`](https://github.com/Lazurio/LazurioPlatform/blob/main/docs/stack-profiles.md#app-data)
+(release 2026.11): exact versions of
 Bun, TypeScript, Vite, React, Biome, Zod, repository-db and module-kit
 (see `app/v3/package.json`). A **stack profile release** moves those versions
-together, for example profile 2026.11 to 2027.05: one template release that
+together, for example `app-data@2026.11` to `app-data@2027.05`: one template release that
 updates `packageManager`, the exact versions, `bun.lock`, the CI's Bun and, if
 the formatter changed, reformats once. Organizations take it by merging its
 tag like any other release. Between profile releases only patch versions with
@@ -78,7 +79,7 @@ and reversible:
 1. **A new App beside the old one.** Create `app/v4/` from `app/v3/`:
    `src/domain/`, `src/server/`, `src/ui/` and `tests/store-contract.ts` are
    copied unchanged. Add `src/data/dolt-store.ts`, the storage port over Dolt
-   (Kysely 0.29.8 and mysql2 3.24.6 per profile 4), and SQL migrations
+   (Kysely 0.29.8 and mysql2 3.24.6 per the profile `app-database`), and SQL migrations
    derived from the Zod schemas (`migrations/0001_init.sql`, …). Plans and
    roadmaps are flat records with a stable code, so they map to rows; nested
    lists become their own tables.

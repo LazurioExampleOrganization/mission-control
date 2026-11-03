@@ -5,7 +5,7 @@
 ## 4.0.0 — proposed, not released
 
 Mission Control becomes the first template of the Lazurio Marketplace: the
-App is rebuilt on the stack profile "app with data, v3" and on the
+App is rebuilt on the stack profile `app-data@2026.11` and on the
 repository-db engine, and the repository carries what an Organization needs to
 adopt it. The release is a draft until it is tagged on the publisher's
 instruction.
