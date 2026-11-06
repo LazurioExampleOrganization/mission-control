@@ -2,16 +2,96 @@
 
 ## Unreleased
 
-- From `main` the App runs as one production process (LazurioPlatform F58
-  addendum (2), root decision 0195 point 24): `lazurio.runtime` declares
-  `start_script: "dev"`, `build_script: "prepare:app"` (the client only,
-  formerly `build`) and `build_output: "dist"`, and the server serves its
-  client from `LAZURIO_RUNTIME_BUILD_OUTPUT` when set, otherwise from
-  `app/v3/dist`. `dev` starts Bun with `--no-env-file`. Integrate this into an
-  Organization fork only when every Environment of that Organization runs a
-  LazurioPlatform release that knows `start_script` (v0.1.11) and the Lazurio
-  root on its computers knows it too: an older release refuses the unknown
-  key and does not start the App.
+## 4.0.0 — 2026-11-03
+
+Mission Control becomes the first template of the Lazurio Marketplace: the
+App is rebuilt on the stack profile `app-data@2026.11` and on the
+repository-db engine, and the repository carries what an Organization needs to
+adopt it. The release is a draft until it is tagged on the publisher's
+instruction.
+
+### For people
+
+- Overview with plans by state, the main roadmap, its next steps and the
+  plans under way; roadmaps with priorities and steps grouped by period; plans
+  with every section, the roadmaps they are on, an edit form and a form for a
+  new plan with the next code of the Organization's prefix.
+- Draft & Publish is the shared card of repository-db: the changed records in
+  business language (changed fields named in Czech), publish all, return one
+  record or all, finish a send, take colleagues' work. A data check lists any
+  record that breaks a schema or a rule.
+
+### For Organizations and agents
+
+- **Data through the engine.** The App reads and writes its data only through
+  `@lazurio/repository-db` v3.2.6 (sync host, `writeRecordDraft` with base
+  revisions, review adapter). The own Git pull and publish flow
+  (`src/mission-control-pull.mjs`, `src/mission-control-publish-flow.mjs`,
+  local changesets, writer audit) is removed, and with it the `.mjs` sources
+  outside `app/` that broke MS-08 and MS-09.
+- **A storage port.** `app/v3/src/data/store.ts` is the only way the server
+  reaches data; `tests/store-contract.ts` is its shared test suite, passed by
+  the repository-db store and a memory store, and later by a Dolt store (v4).
+- **Zod is the only definition of the data.** Plan, roadmap and settings
+  schemas live in `app/v3/src/domain/`; the hand-written types and the
+  hand-written JSON Schemas are gone. The JSON Schemas of the data repository
+  are generated (`bun run schema:export`) and checked for staleness.
+- **Existing data repositories are read unchanged**: the same layout under
+  `data/mission-control/` and the same record versions (`plan.v2`,
+  `roadmap.v1`). Task ledgers, issue ledgers and changesets are no longer read.
+- **Data repository template** (`templates/data-repo/`) with a
+  dependency-free validator (`bun scripts/validate.ts`) over the generated
+  schemas, and fictional example records (`templates/sample-data/`).
+- **One gate:** `bun run check` runs the type check, Biome, the schema
+  staleness check, the seed validation and the tests; CI runs it with
+  `bun run build`.
+- **Stack:** Bun 1.4.4, TypeScript 7.0.2, Vite 8.3.5, React 19.3.1,
+  Biome 2.6.4 (spaces, width 100, reformatted once), Zod 4.6.7,
+  `@lazurio/module-kit` v0.2.0; every version exact. `ajv` and `yaml` are no
+  longer dependencies of the App.
+- **Module Standard:** one App package (`app/v3`), no package at the Module
+  root; `dev` and `start` run one Bun server (a development run bundles the
+  client itself, a production run serves `LAZURIO_RUNTIME_BUILD_OUTPUT` or
+  `dist/`); health is `/healthz`; the preparation installs nothing and builds
+  nothing; writes are accepted only as JSON from the App's own origin.
+- `bun run dev:demo` serves the fictional example records from memory.
+- Documents: `docs/adoption.md`, `docs/extending.md`, `docs/data.md`, and
+  Marketplace screenshots in `docs/screenshots/`.
+- **License:** still MIT; the copyright holder in `LICENSE` is now "Lazurio
+  contributors" (formerly "MissionControlTemplate contributors").
+- **Source:** the repository moved from `Lazurio/mission-control` to
+  `LazurioTemplates/mission-control`, the publisher of the Lazurio Marketplace
+  templates. GitHub redirects the old path for Git and the web, and the tags
+  v3.0.0 to v3.1.0 and their Releases moved with it; a 3.x fork should still
+  point its `upstream` remote to the new path.
+
+### Removed
+
+Agent work, proposals, the work board and planning coverage pages, TODO
+export, plan code reservations, issue resolution, the Doctor-managed install
+contract, the root `package.json`, `templates/organization-data/` and
+`templates/launchpad-app/`. They depended on the removed publish flow or on
+task ledgers outside the record model; each can return as a feature of the
+storage port.
+
+### Adopting 4.0.0 from 3.x
+
+An Organization that runs a 3.x fork takes 4.0.0 by merging its tag
+([`docs/extending.md`](docs/extending.md)). Its data repository needs no
+migration; replacing its validator with the generated schemas and
+`bun scripts/validate.ts` is optional and can follow later. Pending local
+changesets of the old publish flow must be published or dropped before the
+merge: 4.0.0 does not read them.
+
+Before the merge, check that every Environment of the Organization runs a
+LazurioPlatform release that knows `start_script` and `build_output` (v0.1.11
+or newer): an older release refuses the unknown keys and does not start the
+App. The Organization's identity (`lazurio.module.json`, the `lazurio.runtime`
+ids, `app/v3/config/data-repository.json`, `app/v3/src/instance/`, its
+`AGENTS.md` section) stays its own while the rest takes the template's side.
+After the merge, `app/v3` is the only App package; the root `package.json`,
+`bun.lock`, `config/`, `schemas/`, `src/`, `scripts/`, `test-support/` and
+`mission-control/` of 3.x are gone.
 
 ## 3.1.0 — 2026-11-01
 

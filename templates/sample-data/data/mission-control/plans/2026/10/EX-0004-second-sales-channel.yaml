@@ -1,0 +1,29 @@
+schema_version: companiesascode.mission_control.plan.v2
+id: mcplan-ex-0004
+dev_code: EX-0004
+title: Evaluate a second sales channel
+status: shaping
+owner: samtaylor
+priority: low
+priority_rank: 200
+created_at: 2026-10-20
+updated_at: 2026-10-20
+context: >-
+  If the research digest pilot shows demand, the offer needs a way to reach
+  readers beyond the test audience.
+current_problem: >-
+  The only channel today is direct invitation, which does not scale.
+target_state: >-
+  A short comparison of two channels with cost, expected reach and the legal
+  guardrails for each.
+scope:
+  in:
+    - Comparison of two channels
+  out:
+    - Paid advertising
+acceptance_criteria:
+  - The comparison names its sources and the date of verification.
+validation:
+  - The founder chooses a channel or stops the plan.
+open_questions:
+  - Which two channels are worth comparing?

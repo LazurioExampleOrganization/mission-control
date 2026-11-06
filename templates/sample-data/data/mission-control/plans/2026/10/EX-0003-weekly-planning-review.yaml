@@ -1,0 +1,29 @@
+schema_version: companiesascode.mission_control.plan.v2
+id: mcplan-ex-0003
+dev_code: EX-0003
+title: Weekly planning review with agents
+status: ready
+owner: alexmorgan
+priority: medium
+priority_rank: 30
+created_at: 2026-10-05
+updated_at: 2026-10-30
+context: >-
+  Plans change during the week, but the roadmap is looked at only when someone
+  remembers to.
+current_problem: >-
+  Stale plan states hide blocked work and make the main roadmap unreliable.
+target_state: >-
+  A thirty-minute weekly review in which an agent prepares the changes since
+  last week and the team confirms or corrects the plan states.
+scope:
+  in:
+    - Agent-prepared summary of changed plans and roadmap steps
+    - One published draft per review with every state change
+  out:
+    - Daily stand-ups
+acceptance_criteria:
+  - The review runs four weeks in a row.
+  - After each review the main roadmap shows no step in a state older than one week.
+validation:
+  - Compare the roadmap before and after four reviews.

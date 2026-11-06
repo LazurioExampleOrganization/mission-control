@@ -1,2 +1,0 @@
-[test]
-preload = ["./tests/fixture-roots.preload.ts"]

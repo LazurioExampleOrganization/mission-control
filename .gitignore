@@ -1,20 +1,14 @@
-node_modules
 node_modules/
 dist/
-.cache/
 .worktrees/
-app/v3/node_modules
-app/v3/node_modules/
-app/v3/dist/
-app/v3/.build/
-app/v3/.cache/
 *.tsbuildinfo
 .DS_Store
-.env
-.env.*
-!.env.example
-# Organization-local Mission Control data checkouts are mounted by repository-db.
-db
-db/
-mission-control/db
-mission-control/db/
+.env*
+# The Module's data checkout: its own repository (repository-db), never tracked here.
+/db/
+# Left behind in existing checkouts by the 3.x layout; keep until every
+# checkout of the Module is verified clean (Module Standard, App generations).
+/mission-control/db/
+/.cache/
+/app/v3/.build/
+/app/v3/.cache/

@@ -1,9 +1,0 @@
-.repository-db/
-node_modules/
-.DS_Store
-.env
-.env.*
-*.secret
-*.token
-*.credential
-**/oauth/**
