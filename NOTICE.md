@@ -1,7 +1,8 @@
 # Notices
 
-Mission Control (formerly MissionControlTemplate) is licensed under the MIT License. See `LICENSE`.
+Mission Control is licensed under the MIT License; see `LICENSE`. An
+Organization may use, modify and commercially extend its copy, keeping the
+copyright and permission notice that MIT requires.
 
-The template is designed so client Organizations can use, modify and commercially extend their copy of Mission Control v3 while preserving the copyright and permission notice required by MIT.
-
-Third-party dependency notices should be added here if future dependencies require attribution beyond their package metadata.
+Its dependencies keep their own licenses, recorded in their package metadata
+(`app/v3/bun.lock`).
