@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-## 4.1.0 — proposed, not released
+## 4.1.0 — 2026-11-08
 
 Mission Control speaks Czech and English and says what it is for, and the
 data repository now enforces exactly what the App enforces. This release
