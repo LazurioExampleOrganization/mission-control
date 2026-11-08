@@ -14,10 +14,18 @@ release with a security fix.
   `app/v3/src/domain/`; the TypeScript type follows by itself. Add a new field
   as optional so existing records stay valid, or ship a migration of the data
   in the same release. Run `bun run schema:export` and copy the regenerated
-  `templates/data-repo/schemas/` into the Organization's data repository in a
-  pull request of its own.
+  `templates/data-repo/schemas/` and `templates/data-repo/scripts/mission-control-check.js`
+  into the Organization's data repository in a pull request of its own,
+  merged together with the Module's.
 - **A rule across records** belongs to `app/v3/src/domain/rules.ts`, with a
-  test in `tests/domain.test.ts`.
+  stable issue code, an English message, its wording in both catalogs of
+  `app/v3/src/i18n/messages.ts` and a test in `tests/domain.test.ts`. The
+  check bundle carries it into the data repository's validator.
+- **Texts.** Every text a person sees is in `app/v3/src/i18n/messages.ts`,
+  in Czech and in English; TypeScript refuses a catalog that lacks a key.
+  Add both, never one, and keep codes and the Organization's records
+  untranslated. The example records exist in both languages
+  (`templates/sample-data/cs/`, `/en`) with the same codes, states and dates.
 - **A new operation on the data** is a method of the storage port
   (`app/v3/src/data/store.ts`) named by the domain (`archivePlan`, not
   `moveFile`), implemented in every store and covered by
@@ -48,9 +56,14 @@ git merge --no-ff <commit>
   (`lazurio.module.json`, `lazurio.runtime` ids, `config/data-repository.json`,
   `src/instance/`, its `AGENTS.md` section) stays the Organization's; the rest
   usually takes the template's side.
-- Read the release's `CHANGELOG.md` section: when the schemas changed, the data
-  repository gets the regenerated `schemas/` (and any migration) in a pull
-  request of its own, merged together with the Module's.
+- Read the release's `CHANGELOG.md` section. When `templates/data-repo/`
+  changed (the schemas, the validator or its check bundle, the workflow), the
+  data repository gets the same files (and any migration) in a pull request
+  of its own, merged right before the Module's, in one window: the App and
+  its data repository's validator must check the same rules. A release that
+  renames a CI check says so; an Owner changes the required check of the
+  ruleset in that window ([`data.md`](data.md), "A data repository of
+  Mission Control 3.x").
 - `bun install --frozen-lockfile && bun run check && bun run build`, then a
   pull request. Merging it is the person's Publication.
 
@@ -86,7 +99,7 @@ and reversible:
 2. **Draft & Publish stays the same for people.** A draft is the person's
    working set or branch, publishing is `DOLT_COMMIT` with the author and
    a summary, the review comes from Dolt's diff tables, and the card is the
-   same `DraftPublishPanel` fed with the same view model. This mapping is to
+   same card fed with the same view model (`deriveDraftPanel`). This mapping is to
    be proven on a prototype before the first v4 release.
 3. **The same tests.** `tests/store-contract.ts` runs against Dolt in CI, with
    a pinned `dolt sql-server`. A store that passes the suite replaces the v3

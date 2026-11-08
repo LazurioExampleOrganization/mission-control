@@ -1,0 +1,39 @@
+schema_version: companiesascode.mission_control.plan.v2
+id: mcplan-ex-0003
+dev_code: EX-0003
+title: Týdenní revize plánů s agenty
+status: ready
+owner: alexmorgan
+priority: medium
+priority_rank: 30
+created_at: 2026-10-05
+updated_at: 2026-10-30
+context: >-
+  Plány se během týdne mění, ale na roadmapu se někdo podívá, jen když si
+  vzpomene.
+current_problem: >-
+  Zastaralé stavy plánů skrývají zablokovanou práci a hlavní roadmapa pak není
+  spolehlivá.
+target_state: >-
+  Třicetiminutová týdenní revize, na kterou agent připraví změny od minulého
+  týdne a tým stavy plánů potvrdí nebo opraví.
+scope:
+  in:
+    - Shrnutí změněných plánů a kroků roadmapy, které připraví agent
+    - Jeden publikovaný koncept na revizi se všemi změnami stavů
+  out:
+    - Denní porady
+acceptance_criteria:
+  - Revize proběhne čtyři týdny po sobě.
+  - Po každé revizi nemá hlavní roadmapa žádný krok ve stavu starším než týden.
+validation:
+  - Porovnat roadmapu před čtyřmi revizemi a po nich.
+proposed_tasks:
+  - title: Připravit shrnutí změn za týden
+    summary: Před každou revizí sepsat, které plány a kroky roadmapy se změnily a co čeká na rozhodnutí.
+    priority: medium
+    assignee: planning-agent
+  - title: Potvrdit stavy plánů
+    summary: Na revizi projít shrnutí a každý zastaralý stav opravit v jednom konceptu.
+    priority: medium
+    assignee: alexmorgan

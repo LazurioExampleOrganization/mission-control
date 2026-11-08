@@ -8,6 +8,7 @@ import {
   type Plan,
   planIdFor,
 } from "../domain/plan.ts";
+import { type Locale, localeOr } from "../i18n/locale.ts";
 
 /**
  * The HTTP API of Mission Control. The browser talks only to this API; the
@@ -18,6 +19,12 @@ export interface ApiOptions {
   allowedOrigins: ReadonlySet<string>;
   /** Today's date for new records; injectable for tests. */
   today?: () => string;
+  /**
+   * The language this server was started with (`bun run dev:demo -- --locale
+   * en`), told to the client in `/api/status`. Lazurio's own language, when it
+   * reaches the page, comes first; without either the client speaks Czech.
+   */
+  locale?: Locale;
 }
 
 const WRITE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
@@ -56,6 +63,7 @@ function json(body: unknown, status = 200): Response {
   return Response.json(body, { status, headers: { "cache-control": "no-store" } });
 }
 
+/** A refusal: a stable `code` the UI words, an English `message` for agents and logs. */
 function refusal(code: string, message: string, status: number, issues: unknown[] = []) {
   return json({ code, message, issues }, status);
 }
@@ -215,7 +223,9 @@ export function createApi(store: MissionControlStore, options: ApiOptions) {
     const roadmapMatch = /^\/api\/roadmaps\/([^/]+)$/.exec(pathname);
     const code = decodeURIComponent((plan ?? roadmapMatch)?.[1] ?? "");
 
-    if (pathname === "/api/status" && method === "GET") return json(await store.available());
+    if (pathname === "/api/status" && method === "GET") {
+      return json({ ...(await store.available()), locale: options.locale ?? null });
+    }
     if (pathname === "/api/config" && method === "GET") return json(await store.config());
     if (pathname === "/api/plans" && method === "GET") return json(await store.listPlans());
     if (pathname === "/api/plans" && method === "POST") return createPlan(req);
@@ -231,7 +241,9 @@ export function createApi(store: MissionControlStore, options: ApiOptions) {
     }
     if (roadmapMatch && method === "PUT") return saveRoadmap(code, req);
     if (pathname === "/api/check" && method === "GET") return json(await store.check());
-    if (pathname === "/api/draft" && method === "GET") return json(await store.draft());
+    if (pathname === "/api/draft" && method === "GET") {
+      return json(await store.draft(localeOr(url.searchParams.get("locale"))));
+    }
     if (pathname === "/api/draft/publish" && method === "POST") {
       const input = await body(req, publishInput);
       await store.publish(input.summary ? input : { expectedRevision: input.expectedRevision });

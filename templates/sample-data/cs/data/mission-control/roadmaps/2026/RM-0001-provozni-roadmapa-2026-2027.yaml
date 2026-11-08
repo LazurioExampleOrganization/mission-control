@@ -1,0 +1,83 @@
+schema_version: companiesascode.mission_control.roadmap.v1
+id: mcroadmap-rm-0001
+roadmap_code: RM-0001
+title: Provozní roadmapa 2026–2027
+main: true
+status: in_progress
+owner: alexmorgan
+priority: high
+created_at: 2026-09-01
+updated_at: 2026-10-30
+source_plan: EX-0003
+summary: >-
+  Z Organizace, která plánuje v chatu, na Organizaci, která plánuje v Mission
+  Control, a potom první změřená nabídka.
+agent_lane:
+  execution_agents:
+    - planning-agent
+    - research-agent
+  reviewers:
+    - alexmorgan
+  escalation_policy: Zaseknutý krok jde do jednoho pracovního dne k vlastníkovi roadmapy.
+priorities:
+  - id: priority-001
+    title: Kolegové i agenti mají jeden zdroj pravdy
+    rank: 1
+    rationale: Každý další krok stojí na aktuálních plánech.
+  - id: priority-002
+    title: Jedna změřená nabídka před druhou
+    rank: 2
+steps:
+  - id: step-001
+    title: Zveřejnit znalostní bázi pro nové kolegy
+    status: done
+    executable: true
+    timing:
+      from: 2026-09
+      to: 2026-10
+      confidence: committed
+    priority_refs:
+      - priority-001
+    plan_refs:
+      - EX-0001
+    evidence_refs:
+      - label: Kontrolní seznam zaučení prošli dva nováčci
+        kind: validation
+        path: data/mission-control/plans/2026/09/EX-0001-znalostni-baze-pro-nove-kolegy.yaml
+  - id: step-002
+    title: Spustit pilot přehledu výzkumu
+    status: in_progress
+    executable: true
+    timing:
+      from: 2026-10
+      to: 2026-Q4
+      confidence: likely
+    priority_refs:
+      - priority-002
+    plan_refs:
+      - EX-0002
+    acceptance_criteria:
+      - Čtyři vydání vyšla a zpráva z pilotu je zkontrolovaná.
+  - id: step-003
+    title: Zahájit týdenní revize plánů
+    status: ready
+    executable: true
+    timing:
+      to: 2026-Q4
+      confidence: committed
+    priority_refs:
+      - priority-001
+    plan_refs:
+      - EX-0003
+  - id: step-004
+    title: Rozhodnout o druhém prodejním kanálu
+    status: shaping
+    executable: false
+    timing:
+      from: 2027-01
+      to: 2027-Q1
+      confidence: tentative
+    priority_refs:
+      - priority-002
+    plan_refs:
+      - EX-0004

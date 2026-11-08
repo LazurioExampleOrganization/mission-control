@@ -17,9 +17,22 @@ import {
 import type { MissionControlConfig } from "../domain/config.ts";
 import { comparePlans, type Plan } from "../domain/plan.ts";
 import type { Roadmap } from "../domain/roadmap.ts";
-import { checkRules, type RuleIssue } from "../domain/rules.ts";
-import { assertRulesFor, parseConfig, parsePlan, parseRoadmap, recordFileName } from "./records.ts";
-import { missionControlReviewAdapter } from "./review-adapter.ts";
+import type { RuleIssue } from "../domain/rules.ts";
+import { DEFAULT_LOCALE } from "../i18n/locale.ts";
+import {
+  CONFIG_PATH,
+  checkParsedData,
+  type DataFile,
+  isRecordFile,
+  linkRefused,
+  type ParsedData,
+  PLANS_PATH,
+  parseDataFiles,
+  ROADMAPS_PATH,
+  ruleInputOf,
+} from "./files.ts";
+import { assertRulesFor, parsePlan, parseRoadmap, recordFileName } from "./records.ts";
+import { reviewAdapter } from "./review-adapter.ts";
 import type {
   DiscardScope,
   DraftCard,
@@ -30,11 +43,6 @@ import type {
 } from "./store.ts";
 import { StoreError } from "./store.ts";
 
-/** Where Mission Control keeps its records inside the data repository's `data/`. */
-const ROOT = "mission-control";
-const CONFIG_FILE = `${ROOT}/mission-control.config.json`;
-const PLANS = `${ROOT}/plans`;
-const ROADMAPS = `${ROOT}/roadmaps`;
 /** `Repository-Db-Source` of every publish from this App. */
 const SOURCE = "mission-control-v3";
 
@@ -57,7 +65,8 @@ interface Snapshot {
   config: MissionControlConfig;
   plans: FileRecord<Plan>[];
   roadmaps: FileRecord<Roadmap>[];
-  problems: RuleIssue[];
+  /** The parsed data as the shared check sees it (`files.ts`). */
+  parsed: ParsedData;
 }
 
 /**
@@ -83,10 +92,11 @@ export function createRepositoryDbStore(options: RepositoryDbStoreOptions): Miss
   });
   if ((options.intervalMs ?? 30_000) > 0) host.start();
 
+  /** Paths of the shared check (`data/mission-control/…`) under the engine's data layout. */
   const dataPath = (db: RepositoryDb, relative: string) =>
-    posix.join(db.config.layout.data, relative);
+    posix.join(db.config.layout.data, relative.replace(/^data\//, ""));
 
-  function listYaml(db: RepositoryDb, directory: string): string[] {
+  function listYaml(directory: string, refused: RuleIssue[]): string[] {
     const found: string[] = [];
     const walk = (relative: string) => {
       const absolute = assertDataPath(mountRoot, relative);
@@ -100,81 +110,74 @@ export function createRepositoryDbStore(options: RepositoryDbStoreOptions): Miss
       for (const entry of entries) {
         const child = posix.join(relative, entry.name);
         // A link is never followed: it could lead out of the data checkout.
-        if (entry.isDirectory()) walk(child);
-        else if (entry.isFile() && /\.ya?ml$/i.test(entry.name)) found.push(child);
+        if (entry.isSymbolicLink()) refused.push(linkRefused(child));
+        else if (entry.isDirectory()) walk(child);
+        else if (entry.isFile() && isRecordFile(entry.name)) found.push(child);
       }
     };
-    walk(dataPath(db, directory));
+    walk(directory);
     return found.sort();
   }
 
-  function readText(path: string): { text: string; revision: Revision } | null {
+  function readFile(path: string): DataFile | null {
     const text = readDataFile(mountRoot, path);
-    if (text === null) return null;
-    return { text, revision: recordRevisionFromBytes(Buffer.from(text, "utf8")) };
+    return text === null ? null : { path, text };
   }
 
-  function readConfig(db: RepositoryDb): MissionControlConfig {
-    const path = dataPath(db, CONFIG_FILE);
-    const file = readText(path);
-    if (!file) {
+  const revisionOf = (text: string): Revision => recordRevisionFromBytes(Buffer.from(text, "utf8"));
+
+  /**
+   * Every record of the checkout through the engine (`readDataFile`,
+   * `assertDataPath`), parsed and checked by the same code as the data
+   * repository's validator.
+   */
+  function snapshot(db: RepositoryDb): Snapshot {
+    const refused: RuleIssue[] = [];
+    const configFile = readFile(dataPath(db, CONFIG_PATH));
+    const collect = (directory: string) =>
+      listYaml(dataPath(db, directory), refused).flatMap((path) => readFile(path) ?? []);
+    const plans = collect(PLANS_PATH);
+    const roadmaps = collect(ROADMAPS_PATH);
+    const parsed = parseDataFiles(
+      { config: configFile, plans, roadmaps, issues: refused },
+      parseYaml,
+    );
+    if (!parsed.config) {
+      if (!configFile) {
+        throw new StoreError(
+          "config_missing",
+          `${dataPath(db, CONFIG_PATH)} is missing: the data repository has no Mission Control settings yet.`,
+        );
+      }
+      const issues = parsed.issues.filter((issue) => issue.record === configFile.path);
       throw new StoreError(
-        "config_missing",
-        `${path} is missing: the data repository has no Mission Control settings yet.`,
+        "invalid_record",
+        `${configFile.path}: ${issues.map((issue) => issue.message).join("; ")}`,
+        issues,
       );
     }
-    let raw: unknown;
-    try {
-      raw = JSON.parse(file.text);
-    } catch {
-      throw new StoreError("invalid_record", `${path} is not valid JSON.`);
-    }
-    return parseConfig(raw, path);
-  }
-
-  function readAll<T>(
-    db: RepositoryDb,
-    directory: string,
-    parse: (value: unknown, label: string) => T,
-    problems: RuleIssue[],
-  ): FileRecord<T>[] {
-    const records: FileRecord<T>[] = [];
-    for (const path of listYaml(db, directory)) {
-      const file = readText(path);
-      if (!file) continue;
-      try {
-        records.push({ path, value: parse(parseYaml(file.text), path), revision: file.revision });
-      } catch (error) {
-        problems.push({
-          record: path,
-          message: error instanceof Error ? error.message : String(error),
-        });
-      }
-    }
-    return records;
-  }
-
-  function snapshot(db: RepositoryDb): Snapshot {
-    const problems: RuleIssue[] = [];
-    const config = readConfig(db);
-    const plans = readAll(db, PLANS, parsePlan, problems);
-    const roadmaps = readAll(db, ROADMAPS, parseRoadmap, problems);
-    plans.sort((left, right) => comparePlans(left.value, right.value));
-    roadmaps.sort((left, right) => left.value.roadmap_code.localeCompare(right.value.roadmap_code));
-    return { config, plans, roadmaps, problems };
-  }
-
-  const ruleInput = (data: Snapshot) => ({
-    config: data.config,
-    plans: data.plans.map((entry) => ({
+    const texts = new Map([...plans, ...roadmaps].map((file) => [file.path, file.text]));
+    const stored = <T>(entry: { path: string; value: T }): FileRecord<T> => ({
+      path: entry.path,
       value: entry.value,
-      fileName: posix.basename(entry.path),
-    })),
-    roadmaps: data.roadmaps.map((entry) => ({
-      value: entry.value,
-      fileName: posix.basename(entry.path),
-    })),
-  });
+      revision: revisionOf(texts.get(entry.path) ?? ""),
+    });
+    return {
+      config: parsed.config,
+      plans: parsed.plans.map(stored).sort((left, right) => comparePlans(left.value, right.value)),
+      roadmaps: parsed.roadmaps
+        .map(stored)
+        .sort((left, right) => left.value.roadmap_code.localeCompare(right.value.roadmap_code)),
+      parsed,
+    };
+  }
+
+  const ruleInput = (data: Snapshot) =>
+    ruleInputOf({
+      config: data.config,
+      plans: data.plans.map((entry) => ({ ...entry, fileName: posix.basename(entry.path) })),
+      roadmaps: data.roadmaps.map((entry) => ({ ...entry, fileName: posix.basename(entry.path) })),
+    });
 
   function writeRecord<T>(
     db: RepositoryDb,
@@ -235,7 +238,7 @@ export function createRepositoryDbStore(options: RepositoryDbStoreOptions): Miss
         };
       }
     },
-    config: () => engine(() => host.read((db) => readConfig(db))),
+    config: () => engine(() => host.read((db) => snapshot(db).config)),
     listPlans: () =>
       engine(() =>
         host.read((db) => snapshot(db).plans.map(({ value, revision }) => ({ value, revision }))),
@@ -258,7 +261,7 @@ export function createRepositoryDbStore(options: RepositoryDbStoreOptions): Miss
           const [year, month] = value.created_at.split("-");
           return dataPath(
             db,
-            `${PLANS}/${year}/${month}/${recordFileName(value.dev_code, value.title)}`,
+            `${PLANS_PATH}/${year}/${month}/${recordFileName(value.dev_code, value.title)}`,
           );
         },
         (data, path) => {
@@ -293,7 +296,7 @@ export function createRepositoryDbStore(options: RepositoryDbStoreOptions): Miss
           const [year] = value.created_at.split("-");
           return dataPath(
             db,
-            `${ROADMAPS}/${year}/${recordFileName(value.roadmap_code, value.title)}`,
+            `${ROADMAPS_PATH}/${year}/${recordFileName(value.roadmap_code, value.title)}`,
           );
         },
         (data, path) => {
@@ -307,12 +310,11 @@ export function createRepositoryDbStore(options: RepositoryDbStoreOptions): Miss
     check() {
       return engine(() =>
         host.read((db) => {
-          const data = snapshot(db);
-          return [...data.problems, ...checkRules(ruleInput(data))];
+          return checkParsedData(snapshot(db).parsed);
         }),
       );
     },
-    async draft(): Promise<DraftCard> {
+    async draft(locale = DEFAULT_LOCALE): Promise<DraftCard> {
       // The host computes its status in the background; before the first
       // check (or without a timer) it is computed now.
       let status = host.status();
@@ -320,12 +322,12 @@ export function createRepositoryDbStore(options: RepositoryDbStoreOptions): Miss
       if (!status.available) {
         return {
           status: null,
-          unavailableReason: status.error?.message ?? "Data zatím nejsou k dispozici.",
+          unavailableReason: status.error?.message ?? "The data checkout is not available yet.",
         };
       }
       return engine(() =>
         host.read(async (db) => {
-          const review = await db.review({ adapters: [missionControlReviewAdapter] });
+          const review = await db.review({ adapters: [reviewAdapter(locale)] });
           const paths = review.resources.flatMap(
             (resource) => resource.changes[0]?.technicalRefs[0]?.path ?? [],
           );

@@ -3,6 +3,7 @@ import type { MissionControlConfig } from "../domain/config.ts";
 import type { Plan } from "../domain/plan.ts";
 import type { Roadmap } from "../domain/roadmap.ts";
 import type { RuleIssue } from "../domain/rules.ts";
+import type { Locale } from "../i18n/locale.ts";
 
 /** What the server stores, as the browser receives it. */
 export interface Stored<T> {
@@ -10,56 +11,47 @@ export interface Stored<T> {
   revision: string;
 }
 
-/** A refusal of the API, with the code the engine documents. */
+/**
+ * A refusal of the API: a stable `code` the UI words in the person's
+ * language (`errorText`), the issues of a refused record, and the server's
+ * English message for the technical detail.
+ */
 export class ApiError extends Error {
   readonly code: string;
-  readonly issues: { path: string; message: string }[];
+  readonly issues: RuleIssue[];
 
-  constructor(code: string, message: string, issues: { path: string; message: string }[] = []) {
+  constructor(code: string, message: string, issues: RuleIssue[] = []) {
     super(message);
     this.code = code;
     this.issues = issues;
   }
 }
 
-/** Czech wording of the refusals a person can meet. */
-const MESSAGES: Record<string, string> = {
-  record_changed: "Záznam mezitím uložil někdo jiný. Načtěte ho znovu; váš text zůstává v editoru.",
-  draft_changed: "Koncept se od zobrazení změnil. Podívejte se na něj znovu a potvrďte.",
-  draft_write_blocked: "Právě probíhá publikování. Zkuste to za chvíli znovu.",
-  conflict_active: "Publikování zastavil konflikt; změny zůstávají vidět v konceptu.",
-  publish_conflict:
-    "Novější práci kolegy nešlo bezpečně spojit s vaší. Postup ukazuje karta konceptu.",
-  pull_blocked_by_draft:
-    "Kolega změnil stejný záznam, který upravujete. Vraťte ho, stáhněte a upravte znovu.",
-  publish_push_failed: "Uloženo, ale server nebyl dostupný. Dokončete odeslání.",
-  send_pending: "Publikování čeká na odeslání; nejdřív ho dokončete.",
-  identity_missing:
-    "Toto Prostředí nemá jméno a e-mail pro Git; přihlaste se ke GitHubu v Lazuriu.",
-  credentials: "Toto Prostředí se k datovému repozitáři nedostane; přihlaste se.",
-  validation_failed: "Data porušují pravidlo datového repozitáře. Nic se nepublikovalo.",
-  mount_unavailable: "Data zatím nejsou k dispozici.",
-  config_missing: "Datový repozitář zatím nemá nastavení Mission Control.",
-  origin_refused: "Změnu lze poslat jen z Mission Control.",
-};
-
 async function request<T>(path: string, init?: { method: string; body: unknown }): Promise<T> {
-  const response = await fetch(
-    path,
-    init
-      ? {
-          method: init.method,
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify(init.body),
-        }
-      : { headers: { accept: "application/json" } },
-  );
+  let response: Response;
+  try {
+    response = await fetch(
+      path,
+      init
+        ? {
+            method: init.method,
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify(init.body),
+          }
+        : { headers: { accept: "application/json" } },
+    );
+  } catch (error) {
+    throw new ApiError("unreachable", error instanceof Error ? error.message : String(error));
+  }
   const data = (await response.json().catch(() => null)) as
-    | (T & { code?: string; message?: string; issues?: { path: string; message: string }[] })
+    | (T & { code?: string; message?: string; issues?: RuleIssue[] })
     | null;
   if (!response.ok) {
-    const code = data?.code ?? "unexpected";
-    throw new ApiError(code, MESSAGES[code] ?? data?.message ?? response.statusText, data?.issues);
+    throw new ApiError(
+      data?.code ?? "unexpected",
+      data?.message ?? response.statusText,
+      Array.isArray(data?.issues) ? data.issues : [],
+    );
   }
   return data as T;
 }
@@ -89,7 +81,7 @@ export const api = {
     }),
   roadmaps: () => request<Stored<Roadmap>[]>("/api/roadmaps"),
   check: () => request<RuleIssue[]>("/api/check"),
-  draft: () => request<DraftPanelInput>("/api/draft"),
+  draft: (locale: Locale) => request<DraftPanelInput>(`/api/draft?locale=${locale}`),
   publish: (expectedRevision: string) =>
     request<{ ok: true }>("/api/draft/publish", { method: "POST", body: { expectedRevision } }),
   finishSend: (expectedHead: string) =>

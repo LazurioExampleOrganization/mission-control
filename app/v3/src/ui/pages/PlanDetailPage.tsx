@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
+import { formatDate } from "../../i18n/format.ts";
 import type { MissionData } from "../App.tsx";
 import { PriorityChip, StatusChip } from "../components/Chips.tsx";
+import { useI18n } from "../i18n.tsx";
 import { href } from "../routes.ts";
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
@@ -24,12 +26,14 @@ function Items({ items }: { items: readonly string[] | undefined }) {
 }
 
 export function PlanDetailPage({ data, code }: { data: MissionData; code: string }) {
+  const { locale, messages } = useI18n();
+  const words = messages.plan;
   const found = data.plans.find((entry) => entry.value.dev_code === code);
   if (!found) {
     return (
       <section>
-        <h1 className="page-title">Plán {code} neexistuje</h1>
-        <a href={href({ page: "plans", status: null })}>Zpět na plány</a>
+        <h1 className="page-title">{words.notFound(code)}</h1>
+        <a href={href({ page: "plans", status: null })}>{words.back}</a>
       </section>
     );
   }
@@ -43,61 +47,67 @@ export function PlanDetailPage({ data, code }: { data: MissionData; code: string
     <article className="plan">
       <header className="page-header">
         <p className="eyebrow">
-          <a href={href({ page: "plans", status: null })}>Plány</a> / {plan.dev_code}
+          <a href={href({ page: "plans", status: null })}>{messages.plans.title}</a> /{" "}
+          {plan.dev_code}
         </p>
         <div className="title-row">
           <h1 className="page-title">{plan.title}</h1>
           <a className="button primary" href={href({ page: "edit-plan", code })}>
-            Upravit
+            {words.edit}
           </a>
         </div>
         <div className="meta-row">
           <StatusChip status={plan.status} />
           <PriorityChip priority={plan.priority} />
-          <span className="muted">Pořadí {plan.priority_rank}</span>
-          <span className="muted">Vlastník {plan.owner}</span>
+          <span className="muted">{words.rank(plan.priority_rank)}</span>
+          <span className="muted">{words.owner(plan.owner)}</span>
           <span className="muted">
-            Založeno {plan.created_at} · upraveno {plan.updated_at}
+            {words.dates(formatDate(locale, plan.created_at), formatDate(locale, plan.updated_at))}
           </span>
         </div>
       </header>
 
       <div className="plan-grid">
         <div>
-          <Section title="Kontext">
+          <Section title={words.context}>
             <p>{plan.context}</p>
           </Section>
-          <Section title="Současný problém">
+          <Section title={words.currentProblem}>
             <p>{plan.current_problem}</p>
           </Section>
-          <Section title="Cílový stav">
+          <Section title={words.targetState}>
             <p>{plan.target_state}</p>
           </Section>
-          <Section title="Rozsah">
+          <Section title={words.scope}>
             <div className="scope">
               <div>
-                <h3>Patří do něj</h3>
+                <h3>{words.scopeIn}</h3>
                 <Items items={plan.scope.in} />
               </div>
               <div>
-                <h3>Nepatří do něj</h3>
+                <h3>{words.scopeOut}</h3>
                 <Items items={plan.scope.out} />
               </div>
             </div>
           </Section>
-          <Section title="Kritéria přijetí">
+          <Section title={words.acceptanceCriteria}>
             <Items items={plan.acceptance_criteria} />
           </Section>
-          <Section title="Ověření">
+          <Section title={words.validation}>
             <Items items={plan.validation} />
           </Section>
           {plan.proposed_tasks?.length ? (
-            <Section title="Navržené úkoly">
+            <Section title={words.proposedTasks}>
               <ul className="task-list">
                 {plan.proposed_tasks.map((task) => (
                   <li key={task.id ?? task.title}>
-                    <strong>{task.title}</strong>
-                    {task.priority ? <PriorityChip priority={task.priority} /> : null}
+                    <div className="task-head">
+                      <strong>{task.title}</strong>
+                      {task.priority ? <PriorityChip priority={task.priority} /> : null}
+                      {task.assignee ? (
+                        <span className="chip chip-assignee">{words.assignee(task.assignee)}</span>
+                      ) : null}
+                    </div>
                     <p>{task.summary}</p>
                   </li>
                 ))}
@@ -107,7 +117,7 @@ export function PlanDetailPage({ data, code }: { data: MissionData; code: string
         </div>
         <aside className="plan-aside">
           {roadmaps.length ? (
-            <Section title="Na roadmapách">
+            <Section title={words.onRoadmaps}>
               <ul>
                 {roadmaps.map(({ value }) => (
                   <li key={value.roadmap_code}>
@@ -119,12 +129,13 @@ export function PlanDetailPage({ data, code }: { data: MissionData; code: string
               </ul>
             </Section>
           ) : null}
-          <Section title="Rozhodnutí">
+          <Section title={words.decisions}>
             {plan.decisions?.length ? (
               <ul className="decisions">
                 {plan.decisions.map((decision) => (
                   <li key={`${decision.date}-${decision.decision}`}>
-                    <span className="muted">{decision.date}</span> {decision.decision}
+                    <span className="muted">{formatDate(locale, decision.date)}</span>{" "}
+                    {decision.decision}
                   </li>
                 ))}
               </ul>
@@ -132,14 +143,14 @@ export function PlanDetailPage({ data, code }: { data: MissionData; code: string
               <p className="muted">—</p>
             )}
           </Section>
-          <Section title="Otevřené otázky">
+          <Section title={words.openQuestions}>
             <Items items={plan.open_questions} />
           </Section>
-          <Section title="Rizika">
+          <Section title={words.risks}>
             <Items items={plan.risk_notes} />
           </Section>
           {plan.links?.length ? (
-            <Section title="Odkazy">
+            <Section title={words.links}>
               <ul>
                 {plan.links.map((entry) => (
                   <li key={entry.label}>

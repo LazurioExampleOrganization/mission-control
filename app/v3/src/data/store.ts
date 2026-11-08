@@ -3,6 +3,7 @@ import type { MissionControlConfig } from "../domain/config.ts";
 import type { Plan } from "../domain/plan.ts";
 import type { Roadmap } from "../domain/roadmap.ts";
 import type { RuleIssue } from "../domain/rules.ts";
+import type { Locale } from "../i18n/locale.ts";
 
 /**
  * The storage port of Mission Control: everything the server needs from the
@@ -62,8 +63,11 @@ export interface MissionControlStore {
    */
   check(): Promise<RuleIssue[]>;
 
-  /** The Draft & Publish card: state, the changed records and the draft revision. */
-  draft(): Promise<DraftCard>;
+  /**
+   * The Draft & Publish card: state, the changed records and the draft
+   * revision. Record labels and changed fields are worded in `locale`.
+   */
+  draft(locale?: Locale): Promise<DraftCard>;
   /** Publish the whole draft as shown; a changed draft is refused with `draft_changed`. */
   publish(input: { expectedRevision: string; actor?: string; summary?: string }): Promise<void>;
   /** Finish sending a publish that was saved but not sent. */
@@ -76,12 +80,15 @@ export interface MissionControlStore {
   close(): void;
 }
 
-/** A refusal the UI words for the person; `code` follows repository-db's error codes. */
+/**
+ * A refusal with a locale-neutral `code` (repository-db's error codes and the
+ * App's own); the UI words it. `issues` name what in a record was refused.
+ */
 export class StoreError extends Error {
   readonly code: string;
-  readonly issues: readonly { path: string; message: string }[];
+  readonly issues: readonly RuleIssue[];
 
-  constructor(code: string, message: string, issues: { path: string; message: string }[] = []) {
+  constructor(code: string, message: string, issues: RuleIssue[] = []) {
     super(message);
     this.name = "StoreError";
     this.code = code;

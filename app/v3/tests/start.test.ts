@@ -48,7 +48,11 @@ describe("start contract", () => {
         expect(foreign.status).toBe(403);
         // Without a data checkout the App runs and says so, quietly.
         const status = await fetch(`http://127.0.0.1:${port}/api/status`);
-        expect((await status.json()).ok).toBe(false);
+        expect(await status.json()).toMatchObject({ ok: false, locale: null });
+        // Lazurio's own paths are not the App's: where Lazurio does not answer
+        // them, the App says so instead of serving its page.
+        const shell = await fetch(`http://127.0.0.1:${port}/.lazurio/shell.json`);
+        expect(shell.status).toBe(404);
       } finally {
         server.kill("SIGTERM");
       }

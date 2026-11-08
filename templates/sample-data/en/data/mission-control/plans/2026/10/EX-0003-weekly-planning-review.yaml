@@ -27,3 +27,12 @@ acceptance_criteria:
   - After each review the main roadmap shows no step in a state older than one week.
 validation:
   - Compare the roadmap before and after four reviews.
+proposed_tasks:
+  - title: Prepare the summary of the week's changes
+    summary: Before each review, list the plans and roadmap steps that changed and what waits for a decision.
+    priority: medium
+    assignee: planning-agent
+  - title: Confirm the plan states
+    summary: In the review, go through the summary and correct every state that is out of date in one draft.
+    priority: medium
+    assignee: alexmorgan

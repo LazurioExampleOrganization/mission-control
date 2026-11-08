@@ -12,6 +12,13 @@ source_plan: EX-0003
 summary: >-
   From an Organization that plans in chat to one that plans in Mission Control,
   then the first measured offer.
+agent_lane:
+  execution_agents:
+    - planning-agent
+    - research-agent
+  reviewers:
+    - alexmorgan
+  escalation_policy: A stuck step goes to the roadmap owner within one working day.
 priorities:
   - id: priority-001
     title: Colleagues and agents share one source of truth

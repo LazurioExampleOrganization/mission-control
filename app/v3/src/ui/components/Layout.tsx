@@ -1,19 +1,28 @@
 import type { DraftPanelInput } from "@lazurio/repository-db";
 import type { ReactNode } from "react";
+import type { Messages } from "../../i18n/messages.ts";
 import { missionControlBrand } from "../../instance/brand.ts";
+import { useI18n } from "../i18n.tsx";
 import { href, type Route } from "../routes.ts";
 
-const NAV: { label: string; route: Route; matches: Route["page"][] }[] = [
-  { label: "Přehled", route: { page: "overview" }, matches: ["overview"] },
-  { label: "Roadmapy", route: { page: "roadmaps" }, matches: ["roadmaps", "roadmap"] },
+const NAV: { label: keyof Messages["nav"]; route: Route; matches: Route["page"][] }[] = [
+  { label: "overview", route: { page: "overview" }, matches: ["overview"] },
+  { label: "roadmaps", route: { page: "roadmaps" }, matches: ["roadmaps", "roadmap"] },
   {
-    label: "Plány",
+    label: "plans",
     route: { page: "plans", status: null },
     matches: ["plans", "plan", "edit-plan"],
   },
-  { label: "Nový plán", route: { page: "new-plan" }, matches: ["new-plan"] },
-  { label: "Koncept a publikování", route: { page: "draft" }, matches: ["draft"] },
+  { label: "newPlan", route: { page: "new-plan" }, matches: ["new-plan"] },
+  { label: "draft", route: { page: "draft" }, matches: ["draft"] },
 ];
+
+/**
+ * The template's placeholder in `instance/brand.ts`, which an adopting
+ * Organization replaces with its display name; until then the sidebar says
+ * "your Organization" in the page's language.
+ */
+const PLACEHOLDER_ORGANIZATION: string = "Organization";
 
 /** How many records the unpublished draft changes; null when there is no draft. */
 function draftCount(draft: DraftPanelInput | null): number | null {
@@ -31,13 +40,18 @@ export function Layout({
   draft: DraftPanelInput | null;
   children: ReactNode;
 }) {
+  const { messages } = useI18n();
   const count = draftCount(draft);
+  const organization =
+    missionControlBrand.organization === PLACEHOLDER_ORGANIZATION
+      ? messages.nav.organizationPlaceholder
+      : missionControlBrand.organization;
   return (
     <div className="shell">
-      <nav className="sidebar" aria-label="Hlavní navigace">
+      <nav className="sidebar" aria-label={messages.nav.label}>
         <div className="sidebar-header">
           <span className="sidebar-product">Mission Control</span>
-          <span className="sidebar-context">{missionControlBrand.organization}</span>
+          <span className="sidebar-context">{organization}</span>
         </div>
         <ul className="sidebar-items">
           {NAV.map((item) => {
@@ -49,9 +63,9 @@ export function Layout({
                   href={href(item.route)}
                   aria-current={active ? "page" : undefined}
                 >
-                  <span>{item.label}</span>
+                  <span>{messages.nav[item.label]}</span>
                   {item.route.page === "draft" && count !== null ? (
-                    <span className="badge badge-draft" title="Nepublikované změny">
+                    <span className="badge badge-draft" title={messages.nav.draftBadge}>
                       {count}
                     </span>
                   ) : null}

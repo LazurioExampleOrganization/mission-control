@@ -69,6 +69,7 @@ export const roadmapStep = z
         code: "custom",
         path: ["executable"],
         message: "an executable step names at least one plan, task or issue",
+        params: { rule: "executable_step_refs" },
       });
     }
     if (step.status === "done" && !step.evidence_refs) {
@@ -76,6 +77,7 @@ export const roadmapStep = z
         code: "custom",
         path: ["evidence_refs"],
         message: "a done step names its evidence",
+        params: { rule: "done_step_evidence" },
       });
     }
   });
