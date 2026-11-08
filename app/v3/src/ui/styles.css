@@ -115,6 +115,10 @@ h3 {
 }
 
 .content-area {
+  min-width: 0;
+  /* A long name without spaces (a Czech compound, an address) wraps instead
+     of widening the page. */
+  overflow-wrap: anywhere;
   position: relative;
   isolation: isolate;
   min-width: 0;
@@ -126,6 +130,8 @@ h3 {
 }
 
 .page-title {
+  text-wrap: balance;
+  hyphens: auto;
   font-size: 1.75rem;
   font-weight: 650;
   letter-spacing: -0.01em;
@@ -516,6 +522,8 @@ textarea {
   border-radius: var(--lz-radius-sm, 6px);
   background: var(--cac-surface, #fff);
   font: inherit;
+  /* At least 16 px, or a phone zooms into the field and stays there. */
+  font-size: max(16px, 1em);
   color: inherit;
 }
 
@@ -571,7 +579,91 @@ textarea {
   border-style: dashed;
 }
 
-/* The shared Draft & Publish card of @lazurio/repository-db/ui. */
+/* What Mission Control is for, at the top of the overview. */
+.intro {
+  margin-bottom: 1.25rem;
+  padding: 1.1rem 1.4rem 1.25rem;
+  border: 1px solid var(--cac-line, #dddcdb);
+  border-radius: var(--lz-radius-md, 10px);
+  background: var(--cac-surface, #fff);
+}
+
+.intro-lead {
+  margin: 0 0 0.9rem;
+  max-width: 72ch;
+  font-size: 1rem;
+  text-wrap: pretty;
+}
+
+.intro-items {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 0.75rem 1.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.intro-item {
+  display: grid;
+  align-content: start;
+  gap: 0.2rem;
+  min-width: 0;
+  padding-left: 0.75rem;
+  border-left: 3px solid var(--lz-blue-200, #a8b9fb);
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+  hyphens: auto;
+}
+
+.intro-item span {
+  color: var(--cac-ink-muted, #707070);
+}
+
+.roadmap-panels {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 0 1rem;
+}
+
+.lane {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 0.35rem 1rem;
+  margin: 0;
+}
+
+.lane dt {
+  font-weight: 600;
+}
+
+.lane dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.task-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.6rem;
+}
+
+.chip-assignee {
+  color: var(--cac-ink-muted, #707070);
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+.nowrap,
+.table .code {
+  white-space: nowrap;
+}
+
+/* The Draft & Publish card (components/DraftCard.tsx), with the class names
+   of the shared card of @lazurio/repository-db/ui. */
 .draft-panel {
   margin-bottom: 1.25rem;
 }
@@ -703,7 +795,8 @@ textarea {
 }
 
 .rdb-draft-actions button,
-.rdb-draft-record-actions button {
+.rdb-draft-record-actions button,
+.rdb-draft-open-link {
   padding: 0.4rem 0.85rem;
   border: 1px solid var(--cac-line-strong, #c3c2c1);
   border-radius: var(--lz-radius-sm, 6px);
@@ -722,8 +815,29 @@ textarea {
   color: var(--lz-danger, #a61e19);
 }
 
+.rdb-draft-open-link {
+  color: inherit;
+}
+
+.rdb-draft-open-link:hover {
+  text-decoration: none;
+  border-color: var(--cac-ink, #171717);
+}
+
+.rdb-draft-revert-blocked,
+.rdb-draft-message {
+  margin: 0;
+  color: var(--cac-ink-muted, #707070);
+}
+
+.rdb-draft-message-error {
+  color: var(--lz-danger, #a61e19);
+}
+
 .rdb-draft-technical,
 .rdb-draft-handoff pre {
+  display: block;
+  overflow-wrap: anywhere;
   font-family: var(--lz-font-mono, ui-monospace, monospace);
   font-size: 0.8rem;
   white-space: pre-wrap;
@@ -731,7 +845,11 @@ textarea {
 
 @media (max-width: 900px) {
   .shell {
-    grid-template-columns: 1fr;
+    /* minmax(0, …): the navigation scrolls instead of widening the page;
+       the content row takes the free height of a short page, not the
+       navigation. */
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
   }
 
   .sidebar {
@@ -741,7 +859,13 @@ textarea {
 
   .sidebar-items {
     grid-auto-flow: column;
+    grid-auto-columns: max-content;
     overflow-x: auto;
+    overscroll-behavior-x: contain;
+  }
+
+  .sidebar-item {
+    white-space: nowrap;
   }
 
   .plan-grid,

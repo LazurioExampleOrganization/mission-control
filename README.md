@@ -1,24 +1,33 @@
 # Mission Control
 
-Plans and roadmaps of a Lazurio Organization, with a reviewed Draft & Publish
-flow. Mission Control is a Module of the
-[Lazurio Module Standard](https://github.com/Lazurio/LazurioPlatform/blob/main/docs/module-standard.md)
-and a template of the Lazurio Marketplace, published by LazurioTemplates as the
-public upstream `LazurioTemplates/mission-control` under the MIT license.
+Mission Control is where an Organization plans the work of its people and
+agents together. A plan says what should change and why, for whom, and by
+which acceptance criteria everyone knows it is done. Roadmaps order plans into
+steps over time and show what can start now. Every plan has an owner, tasks
+have assignees, and a roadmap names the agents doing its work and the people
+who review it. Every edit is first a draft: a person reviews the changed
+records in plain words and publishes them as one change, so colleagues and
+agents always work from the same, current plan.
 
-![The overview: plans by state, the main roadmap and its next steps](docs/screenshots/mission-control-overview.webp)
+![The overview: what Mission Control is for, plans by state, the main roadmap and its next steps](docs/screenshots/en/mission-control-overview.webp)
 
 - **Plans** say why something is done, for whom, its scope, decisions and
   acceptance criteria. Each has a code with the Organization's prefix
-  (`EX-0007`).
+  (`EX-0007`), an owner and proposed tasks with their assignees.
 - **Roadmaps** order plans into steps over time, with priorities, the next
-  steps that can start and the progress so far. One roadmap can be the main one.
+  steps that can start, the progress so far and who works on them. One
+  roadmap can be the main one.
 - **Draft & Publish**: an edit is a draft. A person reviews the changed
   records in business language and publishes them as one change to the
-  Organization's data repository, or returns them.
+  Organization's data, or returns them.
 
-The interface is Czech; the records hold whatever language the Organization
-writes in.
+The interface speaks Czech and English. It follows the language Lazurio
+gives the page (the `locale` of `/.lazurio/shell.json`) and is Czech where
+Lazurio says nothing; the records stay in whatever language the Organization
+writes them. Mission Control is a Module of the
+[Lazurio Module Standard](https://github.com/Lazurio/LazurioPlatform/blob/main/docs/module-standard.md)
+and a template of the Lazurio Marketplace, published by LazurioTemplates as
+the public upstream `LazurioTemplates/mission-control` under the MIT license.
 
 ## How it is built
 
@@ -31,14 +40,16 @@ writes in.
 
 ```text
 app/v3/src/
-  domain/   Zod schemas and pure domain logic; knows no storage
-  data/     the storage port (store.ts), its repository-db implementation and a memory one
+  domain/   Zod schemas, rules across records and pure domain logic; knows no storage
+  data/     the storage port (store.ts), its repository-db implementation and a memory one;
+            files.ts reads and checks records for the App and the data repository alike
+  i18n/     the Czech and English texts of the interface
   server/   Bun.serve: the HTTP API over the port, health, the client
   ui/       React; talks only to the HTTP API
-  cli/      validate, schema export
+  cli/      validate, schema and check bundle export
 app/v3/tests/store-contract.ts   the shared test suite every store implementation passes
 templates/data-repo/             the data repository an adopting Organization starts from
-templates/sample-data/           fictional example records (the "example plans" start)
+templates/sample-data/cs, /en    fictional example records (the "example plans" start)
 ```
 
 The server never runs Git on the data and never reads a record file by a path
@@ -63,14 +74,42 @@ the App runs and says that the data is not available yet.
 
 `bun run dev:demo` serves the fictional example records from memory instead:
 nothing is read from or written to a repository, and every change is gone when
-the process ends. The Marketplace screenshots come from it.
+the process ends. `bun run dev:demo -- --locale en` serves the English example
+records with the English interface. The Marketplace screenshots
+(`docs/screenshots/cs/`, `docs/screenshots/en/`) come from it.
 
 | Script | Does |
 | --- | --- |
 | `check` | the one gate: `typecheck`, `lint`, `schema:check`, `validate:seed`, `bun test` |
-| `validate` | checks the data checkout `db/` (draft included) against the schemas and the rules across records |
-| `schema:export` | regenerates `templates/data-repo/schemas/*.schema.json` from the Zod schemas |
+| `validate` | checks the data checkout `db/` (draft included) against the schemas and the rules across records; `-- --data <dir>` checks any directory laid out like a data repository |
+| `schema:export` | regenerates `templates/data-repo/schemas/*.schema.json` and the data repository's check bundle `templates/data-repo/scripts/mission-control-check.js` |
 | `build` | the client build of the built version (`dist/`) |
+
+## Languages
+
+Every text of the interface is in `app/v3/src/i18n/messages.ts`, once in
+Czech and once in English; TypeScript holds both catalogs to the same shape,
+so no screen can fall back to the other language. Codes, names and the
+Organization's records are never translated. The App decides its language
+once, before the first screen:
+
+1. the `locale` of Lazurio's shell document `/.lazurio/shell.json` on the
+   App's origin (contract `lazurio.shell.v1`), the language of the person's
+   Environment;
+2. otherwise the language the server was started with (`bun run dev:demo --
+   --locale en`);
+3. otherwise Czech.
+
+Today Lazurio relays `/.lazurio/shell.json` only on the origins of its own
+apps, not on a Module's
+([LazurioPlatform#909](https://github.com/Lazurio/LazurioPlatform/issues/909),
+[#135](https://github.com/Lazurio/LazurioPlatform/issues/135)): there the
+App's own server answers 404 and Mission Control speaks Czech. It follows the
+person's language without a new release once Lazurio relays the document.
+
+The example records exist in both languages (`templates/sample-data/cs/`,
+`templates/sample-data/en/`): the same codes, states, dates and people, so
+the screenshots of both languages show the same views.
 
 ## Adopt it
 

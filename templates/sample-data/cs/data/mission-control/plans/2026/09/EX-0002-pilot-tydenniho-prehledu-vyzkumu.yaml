@@ -1,0 +1,44 @@
+schema_version: companiesascode.mission_control.plan.v2
+id: mcplan-ex-0002
+dev_code: EX-0002
+title: Pilot týdenního přehledu výzkumu
+status: in_progress
+owner: robinlee
+priority: high
+priority_rank: 20
+created_at: 2026-09-15
+updated_at: 2026-10-28
+context: >-
+  Ukázková Organizace hledá ověřitelné způsoby, jak můžou agenti vytvářet
+  hodnotu. Týdenní přehled veřejného výzkumu je malá, měřitelná nabídka.
+current_problem: >-
+  Zatím nikdo neví, jestli by čtenáři za vybraný přehled platili, ani kolik
+  času agenta jedno vydání zabere.
+target_state: >-
+  Čtyři vydání pro testovací publikum, se změřeným časem na vydání a ohlasem
+  čtenářů.
+scope:
+  in:
+    - Čtyři týdenní vydání pro testovací publikum dvaceti čtenářů
+    - Měření času na vydání, zvlášť pro agenta a pro lidskou kontrolu
+  out:
+    - Platby a veřejná registrace
+acceptance_criteria:
+  - Čtyři vydání vyjdou podle plánu.
+  - Každé vydání uvádí zdroje a datum jejich ověření.
+  - Zpráva z pilotu uvádí čas na vydání a ohlas čtenářů.
+validation:
+  - Zprávu z pilotu projde týdenní revize plánů.
+risk_notes:
+  - Přehled, který jen převypráví abstrakty, za peníze nestojí; u každého vydání zkontrolujte vlastní syntézu.
+open_questions:
+  - Stačí dvacet čtenářů, aby šlo něco poznat?
+proposed_tasks:
+  - title: Připravit šablonu vydání
+    summary: Oddíly, seznam zdrojů a kontrolní seznam jednoho vydání.
+    priority: high
+    assignee: research-agent
+  - title: Sehnat testovací publikum
+    summary: Pozvat dvacet čtenářů z vymyšleného seznamu partnerů.
+    priority: medium
+    assignee: robinlee

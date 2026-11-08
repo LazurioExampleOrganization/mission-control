@@ -1,11 +1,12 @@
 import { createHash } from "node:crypto";
-import { structuralDiff } from "@lazurio/repository-db";
 import type { MissionControlConfig } from "../domain/config.ts";
 import { comparePlans, type Plan } from "../domain/plan.ts";
 import type { Roadmap } from "../domain/roadmap.ts";
 import { checkRules } from "../domain/rules.ts";
+import { DEFAULT_LOCALE } from "../i18n/locale.ts";
+import { messagesFor } from "../i18n/messages.ts";
 import { assertRulesFor, parsePlan, parseRoadmap, recordFileName } from "./records.ts";
-import { labelFields } from "./review-adapter.ts";
+import { changedFields, changeSummary } from "./review-adapter.ts";
 import type {
   DiscardScope,
   DraftCard,
@@ -131,7 +132,8 @@ export function createMemoryStore(seed: MemoryStoreSeed): MissionControlStore {
         base,
       ),
     check: async () => checkRules(ruleInput()),
-    async draft(): Promise<DraftCard> {
+    async draft(locale = DEFAULT_LOCALE): Promise<DraftCard> {
+      const messages = messagesFor(locale);
       const keys = changedKeys();
       return {
         status: {
@@ -149,11 +151,7 @@ export function createMemoryStore(seed: MemoryStoreSeed): MissionControlStore {
           const [type, code] = key.split(":") as [string, string];
           const value = draft.get(key) ?? published.get(key);
           const kind = !published.has(key) ? "created" : !draft.has(key) ? "deleted" : "modified";
-          const fields = labelFields(
-            structuralDiff(published.get(key) ?? {}, draft.get(key) ?? {}, {
-              maxFields: 12,
-            }).fields,
-          );
+          const diff = changedFields(published.get(key), draft.get(key), locale);
           return {
             technicalPath: key,
             revert: { supported: true },
@@ -162,19 +160,25 @@ export function createMemoryStore(seed: MemoryStoreSeed): MissionControlStore {
               resourceType: type,
               stableResourceId: `${type}:${code}`,
               label: value ? `${code} · ${value.title}` : code,
-              routeTarget: { href: `#/${type}s/${encodeURIComponent(code)}` },
+              routeTarget: {
+                href: `#/${type}s/${encodeURIComponent(code)}`,
+                label: messages.review.open,
+              },
               changes: [
                 {
                   changeId: key,
                   kind,
-                  summary: kind === "created" ? "Nový záznam" : `Změněno polí: ${fields.length}`,
+                  summary: changeSummary(locale, kind, diff.fields.length + diff.truncated),
                   technicalRefs: [{ path: key, kind: "canonical_data_path" }],
-                  fields,
+                  fields: diff.fields,
                   origin: { kind: "app", source: "mission-control-v3" },
                 },
               ],
               fallback: { activeLevel: "resource_adapter", steps: [] },
-              metadata: { typeLabel: type === "plan" ? "Plán" : "Roadmapa" },
+              metadata: {
+                typeLabel:
+                  type === "plan" ? messages.review.type.plan : messages.review.type.roadmap,
+              },
             },
           };
         }),

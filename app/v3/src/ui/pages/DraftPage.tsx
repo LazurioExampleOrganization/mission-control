@@ -1,13 +1,19 @@
-import { DraftPublishPanel, type DraftPublishPanelApi } from "@lazurio/repository-db/ui";
 import { useEffect, useState } from "react";
 import type { RuleIssue } from "../../domain/rules.ts";
 import { api, subscribe } from "../api.ts";
+import { DraftCard } from "../components/DraftCard.tsx";
+import { Issues } from "../components/fields.tsx";
+import { useI18n } from "../i18n.tsx";
+
+const onAnyChange = (onChange: () => void) => subscribe(() => onChange());
 
 /**
- * Draft & Publish: the shared card of repository-db shows what changed,
- * publishes it as one change or returns it. The App adds only the data check.
+ * Draft & Publish: the card shows what changed and publishes it as one change
+ * or returns it. The App adds the data check below it.
  */
 export function DraftPage({ onChanged }: { onChanged: () => Promise<void> }) {
+  const { messages } = useI18n();
+  const words = messages.draftPage;
   const [issues, setIssues] = useState<RuleIssue[] | null>(null);
 
   useEffect(() => {
@@ -18,56 +24,23 @@ export function DraftPage({ onChanged }: { onChanged: () => Promise<void> }) {
     return subscribe(load);
   }, []);
 
-  const panelApi: DraftPublishPanelApi = {
-    loadReview: () => api.draft(),
-    publish: async (expectedRevision) => {
-      await api.publish(expectedRevision);
-      await onChanged();
-    },
-    discard: async (scope, expectedRevision) => {
-      await api.discard(scope, expectedRevision);
-      await onChanged();
-    },
-    finishSend: async (expectedHead) => {
-      await api.finishSend(expectedHead ?? "");
-      await onChanged();
-    },
-    pull: async () => {
-      await api.pull();
-      await onChanged();
-    },
-  };
-
   return (
     <section>
       <header className="page-header">
-        <h1 className="page-title">Koncept a publikování</h1>
-        <p className="page-subtitle">
-          Uložené úpravy jsou koncept. Publikováním je jedním krokem odešlete do datového repozitáře
-          Organizace, kde je uvidí ostatní.
-        </p>
+        <h1 className="page-title">{words.title}</h1>
+        <p className="page-subtitle">{words.subtitle}</p>
       </header>
       <div className="draft-panel">
-        <DraftPublishPanel
-          api={panelApi}
-          pollIntervalMs={60_000}
-          subscribe={(onChange) => subscribe(() => onChange())}
-        />
+        <DraftCard subscribe={onAnyChange} onChanged={onChanged} />
       </div>
       <article className="panel">
-        <h2>Kontrola dat</h2>
+        <h2>{words.check}</h2>
         {issues === null ? (
-          <p className="muted">Kontrolu teď nejde spustit.</p>
+          <p className="muted">{words.checkUnavailable}</p>
         ) : issues.length === 0 ? (
-          <p className="ok">Všechny záznamy odpovídají schématům a pravidlům.</p>
+          <p className="ok">{words.checkOk}</p>
         ) : (
-          <ul className="issues">
-            {issues.map((issue) => (
-              <li key={`${issue.record}:${issue.message}`}>
-                <code>{issue.record}</code> {issue.message}
-              </li>
-            ))}
-          </ul>
+          <Issues issues={issues} />
         )}
       </article>
     </section>

@@ -1,12 +1,8 @@
 import type { ReactNode } from "react";
-
-/** One item per line, for the list fields of a plan. */
-export const toLines = (items: readonly string[] | undefined) => (items ?? []).join("\n");
-export const fromLines = (value: string) =>
-  value
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean);
+import type { RuleIssue } from "../../domain/rules.ts";
+import { errorText, issueText } from "../../i18n/messages.ts";
+import type { ApiError } from "../api.ts";
+import { useI18n } from "../i18n.tsx";
 
 export function Field({
   label,
@@ -27,15 +23,29 @@ export function Field({
   );
 }
 
-export function Issues({ issues }: { issues: { path: string; message: string }[] }) {
+/** Issues of the data or of a refused record, worded in the page's language. */
+export function Issues({ issues }: { issues: readonly RuleIssue[] }) {
+  const { messages } = useI18n();
   if (issues.length === 0) return null;
   return (
     <ul className="issues">
       {issues.map((issue) => (
-        <li key={`${issue.path}:${issue.message}`}>
-          <code>{issue.path}</code> {issue.message}
+        <li key={`${issue.record}:${issue.code}:${issue.message}`}>
+          <code>{issue.record}</code> {issueText(messages, issue)}
         </li>
       ))}
     </ul>
+  );
+}
+
+/** A refusal of the API: what happened, in the page's language, and what to fix. */
+export function ErrorNotice({ error, lead }: { error: ApiError; lead?: string }) {
+  const { messages } = useI18n();
+  return (
+    <div className="notice notice-danger" role="alert">
+      {lead ? <strong>{lead} </strong> : null}
+      {errorText(messages, error.code)}
+      <Issues issues={error.issues} />
+    </div>
   );
 }

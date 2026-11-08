@@ -27,10 +27,16 @@ Do all of this live, before showing a plan.
    prepare a request for an Owner
    (`gh api "orgs/<Org>/members?role=admin" --jq '.[].login'`): an issue in
    the Organization's root repository with the plan below, assigned to them.
-2. **The release.** Fetch it and compare it with the brief:
-   `git ls-remote https://github.com/LazurioTemplates/mission-control refs/tags/<tag>`
-   must point to the recorded commit (for an annotated tag, its peeled
-   `^{}` line). A mismatch stops the adoption.
+2. **The release.** Compare the released commit with the brief. A release
+   tag is annotated, so the tag ref itself names the tag object; the commit
+   is the peeled `^{}` line:
+
+   ```bash
+   git ls-remote https://github.com/LazurioTemplates/mission-control "refs/tags/<tag>^{}"
+   ```
+
+   Its first column must be the recorded commit. A mismatch, or no `^{}`
+   line, stops the adoption.
 3. **Name collision.** Mission Control's slug is `mission-control`. Look in
    the Organization's `modules.manifest.json` for a slot with that slug or
    path, and on GitHub for `<Org>/mission-control` and
@@ -61,7 +67,8 @@ Show the person, in their language and in a few lines:
   (`gh api orgs/<Org>/teams --jq '.[].slug'`), never guessed;
 - the plan prefix for the Organization's plan codes (2-6 capital letters,
   for example `ACME`);
-- the start: empty, or the fictional example plans;
+- the start: empty, or the fictional example plans in the person's
+  language (Czech or English);
 - the pull requests that will wait for them.
 
 Go on only after the person confirms this plan.
@@ -118,20 +125,29 @@ Push the branch and open a pull request in the Module. Do not merge it.
 
 In a worktree of `<Org>/<slug>-data`, on a branch from `v3`:
 
-- copy `templates/data-repo/` of the release: `schemas/`, `scripts/`,
-  `.github/`, `.gitignore`, `README.md`, `AGENTS.md` and
+- copy `templates/data-repo/` of the release: `schemas/`, `scripts/`
+  (the validator and its check bundle `mission-control-check.js`),
+  `.github/`, `.gitattributes`, `.gitignore`, `README.md`, `AGENTS.md` and
   `data/mission-control/`;
 - in `repository-db.yaml` keep `data_repo` as `lazurio module create` wrote
   it and take `schema`, `layout`, `generated_manifest` and `validate` from the
   template;
 - set `plan_prefix` in `data/mission-control/mission-control.config.json` to
   the agreed prefix;
-- for the `sample` start, also copy `templates/sample-data/data/` and replace
-  its prefix `EX` with the agreed one everywhere: plan codes and references,
-  ids (`mcplan-ex-` → `mcplan-<prefix>-`) and file names;
-- run `bun scripts/validate.ts` there and, with the Module's worktree
-  pointing `db/` at this branch, `bun run validate` in `app/v3` (the rules
-  across records); push and open a pull request into `v3`.
+- for the `sample` start, also copy `templates/sample-data/<language>/data/`
+  in the person's language (`cs` or `en`) and replace its prefix `EX` with
+  the agreed one everywhere: plan codes and references, ids
+  (`mcplan-ex-` → `mcplan-<prefix>-`), file names and evidence paths;
+- run `bun scripts/validate.ts` in this worktree. It runs the App's own check
+  (the Zod schemas with their refinements, the rules across records and the
+  App's YAML parser), so a pass here is a pass in the App; there is no need
+  to point the Module's `db/` at this branch. The App can check the same
+  directory with its current code: `bun run validate -- --data <this
+  worktree>` in `app/v3`;
+- push and open a pull request into `v3`. Its CI job `validate` runs the same
+  validator; once the data repository has it, an Owner makes `validate` a
+  required check of `v3` (the Organization's ruleset), as for every Module's
+  data.
 
 ## 6. After the person merges
 

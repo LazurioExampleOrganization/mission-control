@@ -2,20 +2,34 @@ import type { z } from "zod";
 import { type MissionControlConfig, missionControlConfig } from "../domain/config.ts";
 import { type Plan, plan } from "../domain/plan.ts";
 import { type Roadmap, roadmap } from "../domain/roadmap.ts";
-import { checkRules } from "../domain/rules.ts";
+import { checkRules, type RuleIssue } from "../domain/rules.ts";
 import { StoreError } from "./store.ts";
+
+/** Every issue of a Zod parse as a schema issue of `record`, with its path, kind and rule. */
+export function schemaIssues(error: z.ZodError, record: string): RuleIssue[] {
+  return error.issues.map((issue) => {
+    const path = issue.path.join(".") || "(record)";
+    const rule =
+      issue.code === "custom" && typeof issue.params?.rule === "string"
+        ? issue.params.rule
+        : undefined;
+    return {
+      record,
+      code: "schema",
+      params: { path, kind: issue.code, ...(rule ? { rule } : {}) },
+      message: `${path}: ${issue.message}`,
+    };
+  });
+}
 
 /** Parse one record with its schema, or refuse it with every issue named. */
 export function parseRecord<T>(schema: z.ZodType<T>, value: unknown, label: string): T {
   const result = schema.safeParse(value);
   if (result.success) return result.data;
-  const issues = result.error.issues.map((issue) => ({
-    path: issue.path.join(".") || "(record)",
-    message: issue.message,
-  }));
+  const issues = schemaIssues(result.error, label);
   throw new StoreError(
     "invalid_record",
-    `${label} does not match its schema: ${issues.map((issue) => `${issue.path}: ${issue.message}`).join("; ")}`,
+    `${label} does not match its schema: ${issues.map((issue) => issue.message).join("; ")}`,
     issues,
   );
 }
@@ -50,6 +64,6 @@ export function assertRulesFor(record: string, input: Parameters<typeof checkRul
   throw new StoreError(
     "invalid_record",
     `${record}: ${issues.map((issue) => issue.message).join("; ")}`,
-    issues.map((issue) => ({ path: issue.record, message: issue.message })),
+    issues,
   );
 }

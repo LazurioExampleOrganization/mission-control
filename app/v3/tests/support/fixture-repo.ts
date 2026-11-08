@@ -11,7 +11,8 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { DATA_REPO_TEMPLATE, SAMPLE_DATA } from "./seed.ts";
+import type { Locale } from "../../src/i18n/locale.ts";
+import { DATA_REPO_TEMPLATE, sampleDataFor } from "./seed.ts";
 
 /**
  * A data repository for tests, built the way an adopting Organization builds
@@ -41,7 +42,8 @@ function identity(path: string) {
   git(path, ["config", "user.email", "colleague@example.com"]);
 }
 
-export function createFixtureRepo(options: { sample?: boolean } = {}): FixtureRepo {
+/** `sample`: the example records of that language (`true` is English), or none. */
+export function createFixtureRepo(options: { sample?: boolean | Locale } = {}): FixtureRepo {
   // The long, real path: Windows runners hand out an 8.3 short temp path
   // (RUNNER~1) that Git reports in its long form.
   const root = mkdtempSync(join(realpathSync.native(tmpdir()), "mission-control-test-"));
@@ -59,8 +61,10 @@ export function createFixtureRepo(options: { sample?: boolean } = {}): FixtureRe
   identity(mountRoot);
   git(mountRoot, ["checkout", "--quiet", "-B", "v3"]);
   cpSync(DATA_REPO_TEMPLATE, mountRoot, { recursive: true });
-  if (options.sample)
-    cpSync(join(SAMPLE_DATA, "data"), join(mountRoot, "data"), { recursive: true });
+  if (options.sample) {
+    const locale = options.sample === true ? "en" : options.sample;
+    cpSync(join(sampleDataFor(locale), "data"), join(mountRoot, "data"), { recursive: true });
+  }
   const config = join(mountRoot, "repository-db.yaml");
   writeFileSync(
     config,

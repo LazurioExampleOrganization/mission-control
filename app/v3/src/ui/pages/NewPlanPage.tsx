@@ -1,8 +1,9 @@
 import { type FormEvent, useState } from "react";
 import { PRIORITIES } from "../../domain/common.ts";
 import { ApiError, api, type NewPlanInput } from "../api.ts";
-import { Field, fromLines, Issues } from "../components/fields.tsx";
-import { PRIORITY_LABELS } from "../labels.ts";
+import { ErrorNotice, Field } from "../components/fields.tsx";
+import { useI18n } from "../i18n.tsx";
+import { fromLines } from "../plan-form.ts";
 import { href } from "../routes.ts";
 
 const EMPTY: NewPlanInput = {
@@ -19,7 +20,10 @@ const EMPTY: NewPlanInput = {
 
 /** A new plan gets the next code of the Organization's prefix and starts as a draft. */
 export function NewPlanPage({ onChanged }: { onChanged: () => Promise<void> }) {
+  const { messages } = useI18n();
+  const words = messages.newPlan;
   const [input, setInput] = useState(EMPTY);
+  // The list fields stay text as typed; they become items on submit.
   const [criteria, setCriteria] = useState("");
   const [validation, setValidation] = useState("");
   const [error, setError] = useState<ApiError | null>(null);
@@ -49,13 +53,10 @@ export function NewPlanPage({ onChanged }: { onChanged: () => Promise<void> }) {
   return (
     <form className="form" onSubmit={submit}>
       <header className="page-header">
-        <h1 className="page-title">Nový plán</h1>
-        <p className="page-subtitle">
-          Plán říká, proč se něco dělá, pro koho a podle čeho poznáte, že je hotovo. Uloží se jako
-          koncept.
-        </p>
+        <h1 className="page-title">{words.title}</h1>
+        <p className="page-subtitle">{words.subtitle}</p>
       </header>
-      <Field label="Název">
+      <Field label={messages.edit.titleField}>
         <input
           value={input.title}
           onChange={(event) => set("title", event.target.value)}
@@ -63,27 +64,27 @@ export function NewPlanPage({ onChanged }: { onChanged: () => Promise<void> }) {
         />
       </Field>
       <div className="form-row">
-        <Field label="Vlastník">
+        <Field label={messages.edit.owner}>
           <input
             value={input.owner}
             onChange={(event) => set("owner", event.target.value)}
             required
           />
         </Field>
-        <Field label="Priorita">
+        <Field label={messages.edit.priority}>
           <select
             value={input.priority}
             onChange={(event) => set("priority", event.target.value as NewPlanInput["priority"])}
           >
             {PRIORITIES.map((value) => (
               <option key={value} value={value}>
-                {PRIORITY_LABELS[value]}
+                {messages.priority[value]}
               </option>
             ))}
           </select>
         </Field>
       </div>
-      <Field label="Kontext">
+      <Field label={messages.plan.context}>
         <textarea
           rows={3}
           value={input.context}
@@ -91,7 +92,7 @@ export function NewPlanPage({ onChanged }: { onChanged: () => Promise<void> }) {
           required
         />
       </Field>
-      <Field label="Současný problém">
+      <Field label={messages.plan.currentProblem}>
         <textarea
           rows={3}
           value={input.current_problem}
@@ -99,7 +100,7 @@ export function NewPlanPage({ onChanged }: { onChanged: () => Promise<void> }) {
           required
         />
       </Field>
-      <Field label="Cílový stav">
+      <Field label={messages.plan.targetState}>
         <textarea
           rows={3}
           value={input.target_state}
@@ -107,7 +108,7 @@ export function NewPlanPage({ onChanged }: { onChanged: () => Promise<void> }) {
           required
         />
       </Field>
-      <Field label="Kritéria přijetí" hint="Jedna položka na řádek.">
+      <Field label={messages.plan.acceptanceCriteria} hint={messages.edit.onePerLine}>
         <textarea
           rows={3}
           value={criteria}
@@ -115,7 +116,7 @@ export function NewPlanPage({ onChanged }: { onChanged: () => Promise<void> }) {
           required
         />
       </Field>
-      <Field label="Ověření" hint="Jak se ověří, že plán splnil cíl. Jedna položka na řádek.">
+      <Field label={messages.plan.validation} hint={words.validationHint}>
         <textarea
           rows={3}
           value={validation}
@@ -123,15 +124,10 @@ export function NewPlanPage({ onChanged }: { onChanged: () => Promise<void> }) {
           required
         />
       </Field>
-      {error ? (
-        <div className="notice notice-danger" role="alert">
-          {error.message}
-          <Issues issues={error.issues} />
-        </div>
-      ) : null}
+      {error ? <ErrorNotice error={error} /> : null}
       <div className="form-actions">
         <button className="button primary" type="submit" disabled={saving}>
-          {saving ? "Zakládám…" : "Založit plán"}
+          {saving ? words.creating : words.create}
         </button>
       </div>
     </form>

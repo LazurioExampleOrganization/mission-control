@@ -1,17 +1,21 @@
-import { join } from "node:path";
-import { DATA_REPO_TEMPLATE, SAMPLE_DATA } from "../../src/cli/paths.ts";
+import { DATA_REPO_TEMPLATE, SAMPLE_DATA, sampleDataFor } from "../../src/cli/paths.ts";
 import { readDataDirectory } from "../../src/data/directory.ts";
 import type { MissionControlConfig } from "../../src/domain/config.ts";
 import type { Plan } from "../../src/domain/plan.ts";
 import type { Roadmap } from "../../src/domain/roadmap.ts";
+import type { Locale } from "../../src/i18n/locale.ts";
 
-export { DATA_REPO_TEMPLATE, SAMPLE_DATA };
+export { DATA_REPO_TEMPLATE, SAMPLE_DATA, sampleDataFor };
 
-/** The fictional example records this repository ships, parsed. */
-export function sampleData(): { config: MissionControlConfig; plans: Plan[]; roadmaps: Roadmap[] } {
-  const data = readDataDirectory(join(SAMPLE_DATA, "data"));
-  if (!data.config || data.issues.length > 0) {
-    throw new Error(`invalid sample data: ${JSON.stringify(data.issues)}`);
+/** The fictional example records this repository ships in one language, parsed. */
+export function sampleData(locale: Locale = "en"): {
+  config: MissionControlConfig;
+  plans: Plan[];
+  roadmaps: Roadmap[];
+} {
+  const data = readDataDirectory(sampleDataFor(locale));
+  if (!data.config || data.problems.length > 0) {
+    throw new Error(`invalid sample data: ${JSON.stringify(data.problems)}`);
   }
   return {
     config: data.config,

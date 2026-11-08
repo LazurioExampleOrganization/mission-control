@@ -2,6 +2,93 @@
 
 ## Unreleased
 
+## 4.1.0 — proposed, not released
+
+Mission Control speaks Czech and English and says what it is for, and the
+data repository now enforces exactly what the App enforces. This release
+carries the fixes from the first adoption of 4.0.0 into an Organization; an
+Organization still on 3.x takes 4.1.0 directly.
+
+### For people
+
+- **What Mission Control is for**, at the top of the overview, in an empty
+  Organization and a busy one alike: plans with a goal and acceptance
+  criteria, roadmaps over time, who works on what, and Draft & Publish. An
+  empty Organization is told how to start (its first plan here or from an
+  agent in Chat).
+- **Czech and English.** Every screen, message and data issue in both
+  languages, one language per screen; dates and periods in the page's
+  language (`6. 11. 2026`, `6 Nov 2026`). Czech is the default.
+- **Who works on what**: a plan's proposed tasks show their assignee, and a
+  roadmap shows the agents doing its work, its reviewers and its escalation.
+- **The plan editor keeps what you type**: a space at the end of a list item
+  and a new line for the next item are no longer removed while typing; the
+  text becomes items when the plan is saved.
+- **The draft review names only real changes**: a field whose value did not
+  change is no longer listed because the engine wrote its keys in another
+  order on the first edit of an older record (#18). Changed lists read
+  "1 položka", "3 položky", "5 položek".
+
+### For Organizations and agents
+
+- **The language** comes from Lazurio: the `locale` of the shell document
+  `/.lazurio/shell.json` on the App's origin, else the language the server
+  was started with (`bun run dev:demo -- --locale en`), else Czech. Lazurio
+  does not yet relay that document on a Module's origin
+  ([LazurioPlatform#909](https://github.com/Lazurio/LazurioPlatform/issues/909)),
+  so a hosted Module shows Czech until it does; the App's server answers 404
+  for `/.lazurio/*` so the client never waits for its own page. Texts live in
+  `app/v3/src/i18n/messages.ts`; API refusals and data issues carry stable
+  codes (`RuleIssue.code`, `params`) with English messages for agents.
+- **Draft & Publish card** in both languages: Mission Control renders
+  repository-db's `deriveDraftPanel` itself, so the engine still decides the
+  state, the actions and what can be returned; its Czech equals the shared
+  card's (`tests/draft-card.test.ts`). `GET /api/draft?locale=cs|en` words the
+  changed records. The shared card returns once repository-db speaks English
+  ([repository-db#40](https://github.com/Lazurio/repository-db/issues/40)).
+- **One check of the data everywhere** (`app/v3/src/data/files.ts`): the
+  App's data check, `bun run validate` and the data repository's validator
+  run the same Zod schemas with their refinements, the same rules across
+  records and the same YAML parser. The data repository gets it as a
+  generated, dependency-free bundle,
+  `templates/data-repo/scripts/mission-control-check.js`, which
+  `bun run schema:export` builds and `bun run check` keeps current. A done
+  roadmap step without evidence, an executable step without a plan, task or
+  issue, or a step naming an unknown plan no longer passes a data pull
+  request that the App then refuses or skips.
+- **No symbolic links**: the check refuses a link in any component of a path
+  (the data directories, a record, the settings, the bundle) and reads
+  nothing behind it.
+- **`bun run validate -- --data <dir>`** checks any directory laid out like a
+  data repository, such as a worktree of a data pull request, without the
+  data checkout's branch check (#17).
+- **Example data in both languages**: `templates/sample-data/cs/` and
+  `templates/sample-data/en/`, the same records with assignees and a roadmap
+  lane; `dev:demo` serves one by `--locale`. Marketplace screenshots per
+  language in `docs/screenshots/cs/` and `docs/screenshots/en/`.
+- **Adoption**: the tag check compares the peeled commit
+  (`git ls-remote … "refs/tags/<tag>^{}"`); the data pull request is checked
+  with the data repository's own validator (#17); the sample start takes the
+  person's language.
+
+### Adopting 4.1.0
+
+- **From 4.0.0**: merge the tag ([`docs/extending.md`](docs/extending.md)).
+  The data repository takes the new `scripts/validate.ts`,
+  `scripts/mission-control-check.js`, `.gitattributes` and `README.md` and
+  `AGENTS.md` of `templates/data-repo/` in a pull request merged right before
+  the Module's. Records do not change. `templates/sample-data/data/` moved to
+  `templates/sample-data/en/data/`.
+- **From 3.x**: one short, coordinated window, described in
+  [`docs/data.md`](docs/data.md) ("A data repository of Mission Control
+  3.x"): the data repository's new control plane (validator and check
+  bundle, schemas, `repository-db.yaml`, workflow), the renamed required
+  check of the Module (`bun run test (ubuntu-latest)` → `bun run check
+  (ubuntu-latest)`) and the data repository's required check `validate` in
+  the Organization's ruleset, and the Module's merge, right after each other.
+  The 3.x validator cannot stay: 4.x publishes through repository-db, which
+  runs it, and it needs packages a data checkout does not have (#16).
+
 ## 4.0.0 — 2026-11-03
 
 Mission Control becomes the first template of the Lazurio Marketplace: the
@@ -76,12 +163,16 @@ storage port.
 
 ### Adopting 4.0.0 from 3.x
 
+*Corrected in 4.1.0:* replacing the data repository's validator is not
+optional and cannot follow later. 4.0.0 publishes through repository-db,
+which runs the 3.x validator and is refused, and the App's required CI check
+was renamed. Take 4.1.0 instead, in the coordinated window of
+[`docs/data.md`](docs/data.md) ("A data repository of Mission Control 3.x").
+
 An Organization that runs a 3.x fork takes 4.0.0 by merging its tag
 ([`docs/extending.md`](docs/extending.md)). Its data repository needs no
-migration; replacing its validator with the generated schemas and
-`bun scripts/validate.ts` is optional and can follow later. Pending local
-changesets of the old publish flow must be published or dropped before the
-merge: 4.0.0 does not read them.
+migration of its records. Pending local changesets of the old publish flow
+must be published or dropped before the merge: 4.0.0 does not read them.
 
 Before the merge, check that every Environment of the Organization runs a
 LazurioPlatform release that knows `start_script` and `build_output` (v0.1.11

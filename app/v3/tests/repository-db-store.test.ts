@@ -78,6 +78,36 @@ describe("repository-db store", () => {
     }
   });
 
+  test("names only fields whose value changed, not keys the engine reordered (#18)", async () => {
+    const fixture = createFixtureRepo({ sample: true });
+    const store = createRepositoryDbStore({
+      mountRoot: fixture.mountRoot,
+      expect: { remote: fixture.origin, branch: "v3", within: fixture.moduleRoot },
+      intervalMs: 0,
+    });
+    try {
+      // EX-0002 is an older record: its keys, and those of its proposed tasks,
+      // are not in the sorted order the engine writes on the first edit.
+      const path = "data/mission-control/plans/2026/09/EX-0002-research-digest-pilot.yaml";
+      const before = readFileSync(join(fixture.mountRoot, path), "utf8");
+      expect(before).toContain("  - title: Draft the issue template\n    summary:");
+      const opened = await store.getPlan("EX-0002");
+      if (!opened) throw new Error("EX-0002 missing");
+      await store.savePlan({ ...opened.value, priority_rank: 21 }, opened.revision);
+      const after = readFileSync(join(fixture.mountRoot, path), "utf8");
+      expect(after).toContain("  - assignee: research-agent\n    priority: high");
+
+      for (const locale of ["cs", "en"] as const) {
+        const change = (await store.draft(locale)).records?.[0]?.resource.changes[0];
+        expect(change?.fields.map((field) => field.fieldPath)).toEqual(["/priority_rank"]);
+        expect(change?.summary).toBe(locale === "cs" ? "Změněno polí: 1" : "Fields changed: 1");
+      }
+    } finally {
+      store.close();
+      fixture.cleanup();
+    }
+  });
+
   test("serves only its own data repository", async () => {
     const fixture = createFixtureRepo({ sample: true });
     const store = createRepositoryDbStore({

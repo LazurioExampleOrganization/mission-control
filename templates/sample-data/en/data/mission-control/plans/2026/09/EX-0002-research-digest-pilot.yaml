@@ -37,6 +37,8 @@ proposed_tasks:
   - title: Draft the issue template
     summary: Sections, source list and the review checklist of one issue.
     priority: high
+    assignee: research-agent
   - title: Recruit the test audience
     summary: Invite twenty readers from the fictional partner list.
     priority: medium
+    assignee: robinlee

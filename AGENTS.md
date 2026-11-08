@@ -18,7 +18,9 @@ rights of its people, not this repository's maintainers.
 
 - The App code, its Zod schemas, the generated JSON Schemas, the data
   repository template and the documentation.
-- Fictional records only, in `templates/sample-data/` and in tests: no real
+- Fictional records only, in `templates/sample-data/cs/` and
+  `templates/sample-data/en/` (the same records in both languages) and in
+  tests: no real
   Organization, person, plan, credential, secret, local host path or private
   link. The Organization identity in `lazurio.module.json`,
   `app/v3/package.json`, `app/v3/config/data-repository.json` and
@@ -43,17 +45,25 @@ rights of its people, not this repository's maintainers.
   never keep a second write queue, poll loop or conflict state.
 - `app/v3/tests/store-contract.ts` is the shared suite of the port. A change
   of the port's behaviour changes the suite, and every implementation passes it.
-- After a change of a schema, run `bun run schema:export` and commit the
-  regenerated `templates/data-repo/schemas/` in the same pull request. The
-  data repository validator (`templates/data-repo/scripts/validate.ts`) reads
-  them; `bun test` proves it agrees with Zod.
+- `app/v3/src/data/files.ts` is the one reading and check of records from
+  files. The App, `bun run validate` and the data repository's validator all
+  run it; never write a second validator. After a change of a schema, a rule
+  or `files.ts`, run `bun run schema:export` and commit the regenerated
+  `templates/data-repo/schemas/` and
+  `templates/data-repo/scripts/mission-control-check.js` in the same pull
+  request; `bun run check` fails while they are stale.
+- Every text a person sees is in `app/v3/src/i18n/messages.ts`, in Czech
+  and in English, never inline in a component or the server. The server and
+  the domain return stable codes with English messages for agents; the UI
+  words the codes. One screen shows one language.
 
 ## Before a pull request
 
 - `cd app/v3 && bun install --frozen-lockfile && bun run check && bun run build`.
-- A change the person sees: check it in a browser with `bun run dev:demo`
-  (fictional data in memory) or `bun run dev` over a data checkout. Never
-  publish an Organization's data while testing.
+- A change the person sees: check it in a browser in both languages with
+  `bun run dev:demo` and `bun run dev:demo -- --locale en` (fictional data in
+  memory), or `bun run dev` over a data checkout. Never publish an
+  Organization's data while testing.
 - Versions are exact (no `^` or `~`). A new version of a tool is a release
   of the stack profile (see [`docs/extending.md`](docs/extending.md)), not a
   drive-by change.

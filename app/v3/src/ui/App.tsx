@@ -3,8 +3,11 @@ import { useCallback, useEffect, useState } from "react";
 import type { MissionControlConfig } from "../domain/config.ts";
 import type { Plan } from "../domain/plan.ts";
 import type { Roadmap } from "../domain/roadmap.ts";
-import { api, type Stored, subscribe } from "./api.ts";
+import { ApiError, api, type Stored, subscribe } from "./api.ts";
+import { ErrorNotice } from "./components/fields.tsx";
+import { Intro } from "./components/Intro.tsx";
 import { Layout } from "./components/Layout.tsx";
+import { useI18n } from "./i18n.tsx";
 import { DraftPage } from "./pages/DraftPage.tsx";
 import { NewPlanPage } from "./pages/NewPlanPage.tsx";
 import { OverviewPage } from "./pages/OverviewPage.tsx";
@@ -32,10 +35,11 @@ function useHashRoute(): Route {
 }
 
 export function App() {
+  const { locale, messages } = useI18n();
   const route = useHashRoute();
   const [data, setData] = useState<MissionData | null>(null);
   const [draft, setDraft] = useState<DraftPanelInput | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ApiError | null>(null);
 
   const reload = useCallback(async () => {
     try {
@@ -47,12 +51,12 @@ export function App() {
       setData({ config, plans, roadmaps });
       setError(null);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : String(caught));
+      setError(caught instanceof ApiError ? caught : new ApiError("unexpected", String(caught)));
     }
   }, []);
   const reloadDraft = useCallback(async () => {
-    setDraft(await api.draft().catch(() => null));
-  }, []);
+    setDraft(await api.draft(locale).catch(() => null));
+  }, [locale]);
 
   useEffect(() => {
     void reload();
@@ -70,12 +74,18 @@ export function App() {
   return (
     <Layout route={route} draft={draft}>
       {error ? (
-        <div className="notice notice-danger" role="alert">
-          <strong>Data se nepodařilo načíst.</strong> {error}
-        </div>
+        <>
+          {route.page === "overview" ? (
+            <header className="page-header">
+              <h1 className="page-title">{messages.overview.title}</h1>
+            </header>
+          ) : null}
+          <ErrorNotice error={error} lead={messages.app.loadFailed} />
+          {route.page === "overview" ? <Intro /> : null}
+        </>
       ) : null}
-      {data ? <Page route={route} data={data} onChanged={changed} /> : null}
-      {!data && !error ? <p className="muted">Načítám…</p> : null}
+      {data && !error ? <Page route={route} data={data} onChanged={changed} /> : null}
+      {!data && !error ? <p className="muted">{messages.app.loading}</p> : null}
     </Layout>
   );
 }
@@ -89,6 +99,7 @@ function Page({
   data: MissionData;
   onChanged: () => Promise<void>;
 }) {
+  const { messages } = useI18n();
   switch (route.page) {
     case "overview":
       return <OverviewPage data={data} />;
@@ -109,9 +120,9 @@ function Page({
     case "not-found":
       return (
         <section>
-          <h1 className="page-title">Stránka neexistuje</h1>
+          <h1 className="page-title">{messages.app.notFoundTitle}</h1>
           <p>
-            <a href="#/">Zpět na přehled</a>
+            <a href="#/">{messages.app.backToOverview}</a>
           </p>
         </section>
       );

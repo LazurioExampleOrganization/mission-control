@@ -1,17 +1,20 @@
 import { progress } from "../../domain/roadmap.ts";
 import type { MissionData } from "../App.tsx";
 import { PriorityChip, Progress, StatusChip } from "../components/Chips.tsx";
+import { useI18n } from "../i18n.tsx";
 import { href } from "../routes.ts";
 
 export function RoadmapListPage({ data }: { data: MissionData }) {
+  const { messages } = useI18n();
+  const words = messages.roadmaps;
   return (
     <section>
       <header className="page-header">
-        <h1 className="page-title">Roadmapy</h1>
-        <p className="page-subtitle">Roadmapa řadí plány do kroků v čase.</p>
+        <h1 className="page-title">{words.title}</h1>
+        <p className="page-subtitle">{words.subtitle}</p>
       </header>
       {data.roadmaps.length === 0 ? (
-        <p className="muted">Datový repozitář zatím nemá žádnou roadmapu.</p>
+        <p className="muted">{words.none}</p>
       ) : (
         <div className="cards">
           {data.roadmaps.map(({ value }) => (
@@ -22,7 +25,7 @@ export function RoadmapListPage({ data }: { data: MissionData }) {
             >
               <div className="card-head">
                 <span className="code">{value.roadmap_code}</span>
-                {value.main ? <span className="chip chip-main">Hlavní</span> : null}
+                {value.main ? <span className="chip chip-main">{words.main}</span> : null}
                 <StatusChip status={value.status} />
                 <PriorityChip priority={value.priority} />
               </div>

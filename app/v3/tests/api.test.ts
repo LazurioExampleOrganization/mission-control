@@ -34,6 +34,27 @@ const newPlanInput = {
 };
 
 describe("HTTP API", () => {
+  test("tells the client the language it was started with", async () => {
+    const store = createMemoryStore(sampleData());
+    const english = createApi(store, { allowedOrigins: new Set([ORIGIN]), locale: "en" });
+    const status = await (await english(new Request(`${ORIGIN}/api/status`))).json();
+    expect(status).toEqual({ ok: true, locale: "en" });
+    const { call } = setup();
+    expect((await (await call("GET", "/api/status")).json()).locale).toBeNull();
+  });
+
+  test("words the draft card in the language the client asks for", async () => {
+    const { call } = setup();
+    await call("POST", "/api/plans", newPlanInput);
+    const label = async (query: string) =>
+      (await (await call("GET", `/api/draft${query}`)).json()).records[0].resource.metadata
+        .typeLabel;
+    expect(await label("?locale=en")).toBe("Plan");
+    expect(await label("?locale=cs")).toBe("Plán");
+    expect(await label("")).toBe("Plán");
+    expect(await label("?locale=de")).toBe("Plán");
+  });
+
   test("reads plans, roadmaps and settings", async () => {
     const { call } = setup();
     expect((await (await call("GET", "/api/plans")).json()).length).toBe(4);
@@ -90,7 +111,11 @@ describe("HTTP API", () => {
     expect(response.status).toBe(422);
     const body = await response.json();
     expect(body.code).toBe("invalid_record");
-    expect(body.issues[0].path).toBe("priority_rank");
+    expect(body.issues[0]).toMatchObject({
+      record: "EX-0001",
+      code: "schema",
+      params: { path: "priority_rank", kind: "too_small" },
+    });
   });
 
   test("publishes the shown draft and refuses a changed one", async () => {
