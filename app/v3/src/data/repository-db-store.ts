@@ -1,4 +1,3 @@
-import { readdirSync } from "node:fs";
 import { posix } from "node:path";
 import {
   assertDataPath,
@@ -7,7 +6,6 @@ import {
   parseYaml,
   type RepositoryDb,
   RepositoryDbError,
-  readDataFile,
   recordRevisionFromBytes,
   type SyncHost,
   toStableYaml,
@@ -20,17 +18,13 @@ import type { Roadmap } from "../domain/roadmap.ts";
 import type { RuleIssue } from "../domain/rules.ts";
 import { DEFAULT_LOCALE } from "../i18n/locale.ts";
 import {
-  CONFIG_PATH,
   checkData,
   checkEvidence,
-  type DataFile,
+  collectDataFiles,
   directoryReader,
-  isRecordFile,
-  linkRefused,
+  missionControlPaths,
   type ParsedData,
-  PLANS_PATH,
   parseDataFiles,
-  ROADMAPS_PATH,
   ruleInputOf,
 } from "./files.ts";
 import { assertRulesFor, parsePlan, parseRoadmap, recordFileName } from "./records.ts";
@@ -94,75 +88,42 @@ export function createRepositoryDbStore(options: RepositoryDbStoreOptions): Miss
   });
   if ((options.intervalMs ?? 30_000) > 0) host.start();
 
-  /** Paths of the shared check (`data/mission-control/…`) under the engine's data layout. */
-  const dataPath = (db: RepositoryDb, relative: string) =>
-    posix.join(db.config.layout.data, relative.replace(/^data\//, ""));
   /**
-   * The checkout for the checks that look beyond the records (evidence, the
-   * frozen history): the shared reader of `files.ts`, which checks every
-   * component and never follows a link, like the engine's own reads. Used
-   * only inside the sync host's `read` and `run`.
+   * The checkout as the shared check of `files.ts` reads it, for the records,
+   * their evidence and the frozen history alike: every component checked,
+   * no link followed, as the engine's own reads, and a file or directory that
+   * cannot be read reported as an issue rather than skipped. Used only inside
+   * the sync host's `read` and `run`.
    */
   const reader = directoryReader(mountRoot);
-
-  function listYaml(directory: string, refused: RuleIssue[]): string[] {
-    const found: string[] = [];
-    const walk = (relative: string) => {
-      const absolute = assertDataPath(mountRoot, relative);
-      let entries: import("node:fs").Dirent[];
-      try {
-        entries = readdirSync(absolute, { withFileTypes: true });
-      } catch (error) {
-        if ((error as NodeJS.ErrnoException).code === "ENOENT") return;
-        throw error;
-      }
-      for (const entry of entries) {
-        const child = posix.join(relative, entry.name);
-        // A link is never followed: it could lead out of the data checkout.
-        if (entry.isSymbolicLink()) refused.push(linkRefused(child));
-        else if (entry.isDirectory()) walk(child);
-        else if (entry.isFile() && isRecordFile(entry.name)) found.push(child);
-      }
-    };
-    walk(directory);
-    return found.sort();
-  }
-
-  function readFile(path: string): DataFile | null {
-    const text = readDataFile(mountRoot, path);
-    return text === null ? null : { path, text };
-  }
+  const pathsOf = (db: RepositoryDb) => missionControlPaths(db.config.layout.data);
 
   const revisionOf = (text: string): Revision => recordRevisionFromBytes(Buffer.from(text, "utf8"));
 
   /**
-   * Every record of the checkout through the engine (`readDataFile`,
-   * `assertDataPath`), parsed and checked by the same code as the data
-   * repository's validator.
+   * Every record of the checkout, read and parsed by the same code as the
+   * data repository's validator.
    */
   function snapshot(db: RepositoryDb): Snapshot {
-    const refused: RuleIssue[] = [];
-    const configFile = readFile(dataPath(db, CONFIG_PATH));
-    const collect = (directory: string) =>
-      listYaml(dataPath(db, directory), refused).flatMap((path) => readFile(path) ?? []);
-    const plans = collect(PLANS_PATH);
-    const roadmaps = collect(ROADMAPS_PATH);
-    const parsed = parseDataFiles(
-      { config: configFile, plans, roadmaps, issues: refused },
-      parseYaml,
-    );
+    const files = collectDataFiles(reader, db.config.layout.data);
+    const { plans, roadmaps } = files;
+    const parsed = parseDataFiles(files, parseYaml);
     if (!parsed.config) {
-      if (!configFile) {
+      const blocked = parsed.issues.filter(
+        (issue) =>
+          issue.code !== "config_missing" &&
+          (issue.record === files.configPath || files.configPath.startsWith(`${issue.record}/`)),
+      );
+      if (blocked.length === 0) {
         throw new StoreError(
           "config_missing",
-          `${dataPath(db, CONFIG_PATH)} is missing: the data repository has no Mission Control settings yet.`,
+          `${files.configPath} is missing: the data repository has no Mission Control settings yet.`,
         );
       }
-      const issues = parsed.issues.filter((issue) => issue.record === configFile.path);
       throw new StoreError(
         "invalid_record",
-        `${configFile.path}: ${issues.map((issue) => issue.message).join("; ")}`,
-        issues,
+        `${files.configPath}: ${blocked.map((issue) => `${issue.record}: ${issue.message}`).join("; ")}`,
+        blocked,
       );
     }
     const texts = new Map([...plans, ...roadmaps].map((file) => [file.path, file.text]));
@@ -277,10 +238,7 @@ export function createRepositoryDbStore(options: RepositoryDbStoreOptions): Miss
         baseRevision,
         (db) => {
           const [year, month] = value.created_at.split("-");
-          return dataPath(
-            db,
-            `${PLANS_PATH}/${year}/${month}/${recordFileName(value.dev_code, value.title)}`,
-          );
+          return `${pathsOf(db).plans}/${year}/${month}/${recordFileName(value.dev_code, value.title)}`;
         },
         (data, path) => {
           data.plans = [
@@ -312,10 +270,7 @@ export function createRepositoryDbStore(options: RepositoryDbStoreOptions): Miss
         baseRevision,
         (db) => {
           const [year] = value.created_at.split("-");
-          return dataPath(
-            db,
-            `${ROADMAPS_PATH}/${year}/${recordFileName(value.roadmap_code, value.title)}`,
-          );
+          return `${pathsOf(db).roadmaps}/${year}/${recordFileName(value.roadmap_code, value.title)}`;
         },
         (data, path) => {
           data.roadmaps = [

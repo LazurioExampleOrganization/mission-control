@@ -37,25 +37,49 @@ export const PLANS_PATH = "data/mission-control/plans";
 export const ROADMAPS_PATH = "data/mission-control/roadmaps";
 export const HISTORY_LOCK_FILE = "history.lock.json";
 
-/** What a path is, read without following a link anywhere on the way. */
-export type PathKind = "missing" | "file" | "directory" | "other" | { link: string };
+/**
+ * What a path is, read without following a link anywhere on the way. A path
+ * that cannot be inspected (a directory on the way that may not be read) is
+ * `unreadable`, never taken for missing.
+ */
+export type PathKind =
+  | "missing"
+  | "file"
+  | "directory"
+  | "other"
+  | { link: string }
+  | { unreadable: string; detail: string };
 
 export interface DirectoryEntry {
   name: string;
   kind: "file" | "directory" | "link" | "other";
 }
 
+/** A read or listing that failed: `detail` is the system's error code. */
+export interface ReadFailure {
+  failed: string;
+}
+
+export const isReadFailure = (value: unknown): value is ReadFailure =>
+  typeof value === "object" && value !== null && "failed" in value;
+
 /**
  * Read-only access to a data repository checkout. Every path is relative to
- * its root; no read follows a symbolic link or leaves the root.
+ * its root; no read follows a symbolic link or leaves the root. A failure is
+ * returned, never swallowed: the check reports it, because a check that could
+ * not read a file has not checked it.
  */
 export interface DataReader {
   kind(path: string): PathKind;
-  /** The entries of a directory, sorted by name; empty when it is not one. */
-  list(path: string): DirectoryEntry[];
-  /** The bytes of a regular file, or null. */
-  bytes(path: string): Uint8Array | null;
+  /** The entries of a directory, sorted by name, or why it could not be listed. */
+  list(path: string): DirectoryEntry[] | ReadFailure;
+  /** The bytes of a regular file; null when it is gone or not a file; or why it could not be read. */
+  bytes(path: string): Uint8Array | null | ReadFailure;
 }
+
+const failure = (error: unknown): ReadFailure => ({
+  failed: (error as NodeJS.ErrnoException)?.code ?? (error instanceof Error ? error.name : "error"),
+});
 
 /**
  * The checkout at `root` on disk. It checks every component of a path with
@@ -66,19 +90,13 @@ export interface DataReader {
  */
 export function directoryReader(root: string): DataReader {
   const absolute = (path: string) => join(root, ...path.split("/"));
-  const names = (directory: string): string[] | null => {
-    try {
-      return readdirSync(directory);
-    } catch {
-      return null;
-    }
-  };
   return {
     kind(path) {
       const parts = path.split("/");
       let parent = root;
       for (let index = 0; index < parts.length; index += 1) {
         const part = parts[index] ?? "";
+        const here = parts.slice(0, index + 1).join("/");
         const current = join(parent, part);
         let stat: ReturnType<typeof lstatSync>;
         try {
@@ -86,10 +104,22 @@ export function directoryReader(root: string): DataReader {
         } catch (error) {
           const code = (error as NodeJS.ErrnoException).code;
           if (code === "ENOENT" || code === "ENOTDIR") return "missing";
-          throw error;
+          return {
+            unreadable: index === 0 ? "." : parts.slice(0, index).join("/"),
+            detail: failure(error).failed,
+          };
         }
-        if (!names(parent)?.includes(part)) return "missing";
-        if (stat.isSymbolicLink()) return { link: parts.slice(0, index + 1).join("/") };
+        let names: string[];
+        try {
+          names = readdirSync(parent);
+        } catch (error) {
+          return {
+            unreadable: index === 0 ? "." : parts.slice(0, index).join("/"),
+            detail: failure(error).failed,
+          };
+        }
+        if (!names.includes(part)) return "missing";
+        if (stat.isSymbolicLink()) return { link: here };
         if (index === parts.length - 1) {
           return stat.isDirectory() ? "directory" : stat.isFile() ? "file" : "other";
         }
@@ -102,8 +132,8 @@ export function directoryReader(root: string): DataReader {
       let entries: import("node:fs").Dirent[];
       try {
         entries = readdirSync(absolute(path), { withFileTypes: true });
-      } catch {
-        return [];
+      } catch (error) {
+        return failure(error);
       }
       return entries
         .map(
@@ -124,11 +154,14 @@ export function directoryReader(root: string): DataReader {
       let fd: number;
       try {
         fd = openSync(absolute(path), constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0));
-      } catch {
-        return null;
+      } catch (error) {
+        const code = (error as NodeJS.ErrnoException).code;
+        return code === "ENOENT" || code === "ENOTDIR" ? null : failure(error);
       }
       try {
         return fstatSync(fd).isFile() ? readFileSync(fd) : null;
+      } catch (error) {
+        return failure(error);
       } finally {
         closeSync(fd);
       }
@@ -142,10 +175,12 @@ export interface DataFile {
 }
 
 export interface DataFiles {
+  /** Where the settings are looked for (`<data>/mission-control/mission-control.config.json`). */
+  configPath: string;
   config: DataFile | null;
   plans: DataFile[];
   roadmaps: DataFile[];
-  /** Paths refused while collecting (symbolic links). */
+  /** Paths refused or not readable while collecting. */
   issues: RuleIssue[];
 }
 
@@ -174,42 +209,79 @@ export function linkRefused(path: string): RuleIssue {
   };
 }
 
+/** A file or directory the check could not read, so did not check. */
+export function readFailed(path: string, detail: string): RuleIssue {
+  return {
+    record: path,
+    code: "read_failed",
+    params: { path, detail },
+    message: `cannot be read (${detail}); the check could not cover it`,
+  };
+}
+
+/** The issue a path's kind raises on the way, or null when it can be read. */
+function wayIssue(kind: PathKind): RuleIssue | null {
+  if (typeof kind !== "object") return null;
+  return "link" in kind ? linkRefused(kind.link) : readFailed(kind.unreadable, kind.detail);
+}
+
 const decoder = new TextDecoder();
+
+/** Paths of a data repository whose data directory is `dataDir` (the engine's layout). */
+export const missionControlPaths = (dataDir = "data") => ({
+  root: `${dataDir}/mission-control`,
+  config: `${dataDir}/mission-control/mission-control.config.json`,
+  plans: `${dataDir}/mission-control/plans`,
+  roadmaps: `${dataDir}/mission-control/roadmaps`,
+  lock: `${dataDir}/mission-control/${HISTORY_LOCK_FILE}`,
+});
 
 /**
  * Reads the Mission Control records of a data repository: the settings and
  * every plan and roadmap. A symbolic link in any component of a path (the
- * `data` directory, a record directory, a record, the settings) is refused as
- * an issue and not read.
+ * `data` directory, a record directory, a record, the settings) is refused,
+ * and a file or directory that cannot be read is reported; neither is skipped
+ * silently.
  */
-export function collectDataFiles(reader: DataReader): DataFiles {
+export function collectDataFiles(reader: DataReader, dataDir = "data"): DataFiles {
+  const paths = missionControlPaths(dataDir);
   const issues: RuleIssue[] = [];
-  // A link high up (`data`) lies on the way to every file; it is named once.
-  const refuse = (path: string) => {
-    if (!issues.some((issue) => issue.record === path)) issues.push(linkRefused(path));
+  // A link or an unreadable directory high up (`data`) lies on the way to
+  // every file; it is named once.
+  const report = (issue: RuleIssue | null) => {
+    if (issue && !issues.some((known) => known.record === issue.record)) issues.push(issue);
   };
   const read = (path: string): DataFile[] => {
     const bytes = reader.bytes(path);
+    if (isReadFailure(bytes)) {
+      report(readFailed(path, bytes.failed));
+      return [];
+    }
     return bytes ? [{ path, text: decoder.decode(bytes) }] : [];
   };
 
   let config: DataFile | null = null;
-  const configKind = reader.kind(CONFIG_PATH);
-  if (typeof configKind === "object") refuse(configKind.link);
-  else if (configKind === "file") config = read(CONFIG_PATH)[0] ?? null;
+  const configKind = reader.kind(paths.config);
+  report(wayIssue(configKind));
+  if (configKind === "file") config = read(paths.config)[0] ?? null;
+  else if (configKind === "directory" || configKind === "other") {
+    report(readFailed(paths.config, "not a file"));
+  }
 
   const records = (directory: string): DataFile[] => {
     const kind = reader.kind(directory);
-    if (typeof kind === "object") {
-      refuse(kind.link);
-      return [];
-    }
+    report(wayIssue(kind));
     if (kind !== "directory") return [];
     const found: DataFile[] = [];
     const walk = (path: string) => {
-      for (const entry of reader.list(path)) {
+      const entries = reader.list(path);
+      if (isReadFailure(entries)) {
+        report(readFailed(path, entries.failed));
+        return;
+      }
+      for (const entry of entries) {
         const child = `${path}/${entry.name}`;
-        if (entry.kind === "link") refuse(child);
+        if (entry.kind === "link") report(linkRefused(child));
         else if (entry.kind === "directory") walk(child);
         else if (entry.kind === "file" && isRecordFile(entry.name)) found.push(...read(child));
       }
@@ -218,9 +290,9 @@ export function collectDataFiles(reader: DataReader): DataFiles {
     return found;
   };
 
-  const plans = records(PLANS_PATH);
-  const roadmaps = records(ROADMAPS_PATH);
-  return { config, plans, roadmaps, issues };
+  const plans = records(paths.plans);
+  const roadmaps = records(paths.roadmaps);
+  return { configPath: paths.config, config, plans, roadmaps, issues };
 }
 
 const fileNameOf = (path: string) => path.slice(path.lastIndexOf("/") + 1);
@@ -236,14 +308,15 @@ export function parseDataFiles(files: DataFiles, parseYaml: (text: string) => un
   const issues = [...files.issues];
   let config: MissionControlConfig | null = null;
   if (!files.config) {
+    const path = files.configPath;
     const refusedOnTheWay = files.issues.some(
-      (issue) => CONFIG_PATH === issue.record || CONFIG_PATH.startsWith(`${issue.record}/`),
+      (issue) => path === issue.record || path.startsWith(`${issue.record}/`),
     );
     if (!refusedOnTheWay) {
       issues.push({
-        record: CONFIG_PATH,
+        record: path,
         code: "config_missing",
-        message: `${CONFIG_PATH} is missing: the data repository has no Mission Control settings`,
+        message: `${path} is missing: the data repository has no Mission Control settings`,
       });
     }
   } else {
@@ -337,7 +410,11 @@ export function checkEvidence(
           continue;
         }
         const kind = reader.kind(path);
-        if (typeof kind === "object") {
+        if (typeof kind === "object" && "unreadable" in kind) {
+          // The check could not look; that is not the evidence's fault, and
+          // it is not a pass either.
+          issues.push(readFailed(kind.unreadable, kind.detail));
+        } else if (typeof kind === "object") {
           issues.push({
             record,
             code: "evidence_link",
@@ -393,17 +470,27 @@ function historyFiles(reader: DataReader, dataDir: string): HistoryFiles {
   const root = `${dataDir}/mission-control`;
   const files = new Map<string, string>();
   const issues: RuleIssue[] = [];
-  if (reader.kind(root) !== "directory") return { files, issues };
+  const kind = reader.kind(root);
+  const way = wayIssue(kind);
+  if (way) issues.push(way);
+  if (kind !== "directory") return { files, issues };
   const skip = new Set(["mission-control.config.json", HISTORY_LOCK_FILE, "plans", "roadmaps"]);
   const walk = (path: string, top: boolean) => {
-    for (const entry of reader.list(path)) {
+    const entries = reader.list(path);
+    if (isReadFailure(entries)) {
+      issues.push(readFailed(path, entries.failed));
+      return;
+    }
+    for (const entry of entries) {
       if (top && skip.has(entry.name)) continue;
       const child = `${path}/${entry.name}`;
       if (entry.kind === "link") issues.push(linkRefused(child));
       else if (entry.kind === "directory") walk(child, false);
       else if (entry.kind === "file") {
         const bytes = reader.bytes(child);
-        if (bytes) files.set(child, historyDigestOf(bytes));
+        if (isReadFailure(bytes)) issues.push(readFailed(child, bytes.failed));
+        else if (bytes) files.set(child, historyDigestOf(bytes));
+        else issues.push(readFailed(child, "gone while read"));
       }
     }
   };
@@ -419,12 +506,15 @@ function readLock(
 ): { lock: HistoryLock | null; issues: RuleIssue[] } {
   const path = lockPathOf(dataDir);
   const kind = reader.kind(path);
-  if (typeof kind === "object") return { lock: null, issues: [linkRefused(kind.link)] };
+  const way = wayIssue(kind);
+  if (way) return { lock: null, issues: [way] };
   if (kind === "missing") return { lock: null, issues: [] };
-  const bytes = reader.bytes(path);
+  const bytes = kind === "file" ? reader.bytes(path) : null;
+  if (isReadFailure(bytes)) return { lock: null, issues: [readFailed(path, bytes.failed)] };
+  if (!bytes) return { lock: null, issues: [readFailed(path, "not a file")] };
   let raw: unknown;
   try {
-    raw = JSON.parse(decoder.decode(bytes ?? new Uint8Array()));
+    raw = JSON.parse(decoder.decode(bytes));
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error);
     return {
@@ -495,7 +585,11 @@ export function checkHistory(reader: DataReader, dataDir = "data"): RuleIssue[] 
     }
   }
   for (const path of frozen.keys()) {
-    const onTheWay = [...refused].some((link) => path === link || path.startsWith(`${link}/`));
+    // A file under a link or an unreadable directory was not looked at: it is
+    // reported there, not as removed.
+    const onTheWay = [...refused].some(
+      (blocked) => blocked === "." || path === blocked || path.startsWith(`${blocked}/`),
+    );
     if (!current.files.has(path) && !onTheWay) {
       found.push({
         record: path,
@@ -509,8 +603,10 @@ export function checkHistory(reader: DataReader, dataDir = "data"): RuleIssue[] 
 }
 
 /**
- * A new lock of the history as it is now, or the issues that stop a freeze
- * (a symbolic link in the history). `previous` says what the freeze changes.
+ * A new lock of the history as it is now, or the issues that stop a freeze:
+ * a symbolic link, or any file or directory of the history (or the lock) that
+ * cannot be read. A freeze never writes a lock that leaves out what it could
+ * not read. `changes` says what the freeze changes against the previous lock.
  */
 export function freezeHistory(
   reader: DataReader,
@@ -524,12 +620,16 @@ export function freezeHistory(
 } {
   const path = lockPathOf(dataDir);
   const current = historyFiles(reader, dataDir);
-  const lockKind = reader.kind(path);
-  const issues = [
+  const previous = readLock(reader, dataDir);
+  // An invalid previous lock is what a freeze replaces; a lock that cannot be
+  // read or written is not.
+  const issues = distinct([
     ...current.issues,
-    ...(typeof lockKind === "object" ? [linkRefused(lockKind.link)] : []),
-  ];
-  const before = readLock(reader, dataDir).lock?.files ?? {};
+    ...previous.issues.filter(
+      (issue) => issue.code === "link_refused" || issue.code === "read_failed",
+    ),
+  ]);
+  const before = previous.lock?.files ?? {};
   const sorted = [...current.files.keys()].sort();
   const lock: HistoryLock = {
     schema_version: HISTORY_SCHEMA_VERSION,

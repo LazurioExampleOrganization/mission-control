@@ -49,7 +49,9 @@ export type RuleIssueCode =
   /** A file of the frozen history is gone. */
   | "history_removed"
   /** `history.lock.json` is not a valid lock; `params.detail`. */
-  | "history_lock_invalid";
+  | "history_lock_invalid"
+  /** A file or directory cannot be read, so the check did not cover it; `params.path`, `params.detail`. */
+  | "read_failed";
 
 export interface RuleIssue {
   /** The record the issue is about: a plan or roadmap code, a file, or `config`. */

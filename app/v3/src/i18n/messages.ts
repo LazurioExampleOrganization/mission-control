@@ -430,6 +430,8 @@ const cs = {
       history_removed: () => "Soubor patří do zmrazené historie, ale chybí.",
       history_lock_invalid: (p: Params) =>
         `Zámek historie history.lock.json není platný${p.detail ? ` (${p.detail})` : ""}.`,
+      read_failed: (p: Params) =>
+        `Soubor nebo adresář nejde přečíst (${p.detail}), takže ho kontrola nemohla projít.`,
     } satisfies Record<RuleIssueCode, (params: Params) => string>,
   },
 };
@@ -798,6 +800,8 @@ const en: Messages = {
       history_removed: () => "The file is part of the frozen history but is gone.",
       history_lock_invalid: (p) =>
         `The history lock history.lock.json is not valid${p.detail ? ` (${p.detail})` : ""}.`,
+      read_failed: (p) =>
+        `The file or directory cannot be read (${p.detail}), so the check could not cover it.`,
     },
   },
 };

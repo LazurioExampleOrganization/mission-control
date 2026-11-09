@@ -79,7 +79,9 @@ of `templates/data-repo/` needs none. The lock is written by
 `bun scripts/validate.ts --freeze-history` in the data repository, never by
 hand (its shape is `schemas/history.schema.json`). A freeze is deliberate: it
 prints what it adds, changes or removes, and the change of the lock is
-reviewed in its pull request.
+reviewed in its pull request. A freeze refuses to write a lock while any file
+or directory of the history, or the previous lock, cannot be read, so a lock
+never leaves out what it could not see.
 
 Freezing the bytes instead of re-checking the shape of every ledger and
 changeset keeps what the 3.x validator verified (their schemas, the writer
@@ -112,7 +114,9 @@ also refuses to save a roadmap whose evidence names no published file.
 Reading never leaves the checkout: a symbolic link in any component of a path
 (the `data` directory, a record directory, a record, the settings, evidence,
 the history, the lock, the check bundle) is refused as an issue and nothing
-behind it is read.
+behind it is read. A file or directory that cannot be read or listed (no
+read right, an I/O error) is an issue too (`read_failed`), never a silent
+skip: a check that passes has read everything it covers.
 
 ## The data repository
 

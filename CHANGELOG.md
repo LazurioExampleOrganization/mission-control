@@ -34,9 +34,15 @@ validator run the same check.
   for a deliberate change, reviewed as a change of the lock. A repository
   without a lock has an empty history, so the empty start needs none
   ([`docs/data.md`](docs/data.md), "The frozen 3.x history").
+- **A file the check cannot read is an issue** (`read_failed`), whether a
+  record, a record directory, the settings, a history file or directory, or
+  the lock: a check that passes has read everything it covers, and a freeze
+  refuses to write a lock while anything in the history cannot be read. The
+  App reads its records through the same reader as the validator, so its
+  data check reports the same, and it still serves the records it can read.
 - New issue codes (`evidence_missing`, `evidence_not_file`,
   `evidence_excluded`, `evidence_link`, `history_added`, `history_changed`,
-  `history_removed`, `history_lock_invalid`) and schema rules
+  `history_removed`, `history_lock_invalid`, `read_failed`) and schema rules
   (`portable_path`, `credential_url`), worded in Czech and English on the
   data check of Draft & Publish.
 - `templates/data-repo/schemas/history.schema.json`, the shape of the lock.
