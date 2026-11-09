@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-## 4.1.1 — proposed, not released
+## 4.1.1 — 2026-11-09
 
 The data check again holds three safeguards the Mission Control 3.x
 validator had and 4.0 dropped (#21, from the review of the first adoption
