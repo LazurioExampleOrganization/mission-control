@@ -27,6 +27,10 @@ const csSchemaKind: Record<string, string> & { other: string } = {
 const csSchemaRule: Record<string, string> = {
   executable_step_refs: "spustitelný krok musí odkazovat na plán, úkol nebo issue.",
   done_step_evidence: "hotový krok musí uvést důkaz (evidence_refs).",
+  portable_path:
+    "musí být přenositelná cesta uvnitř datového repozitáře (bez ../ a bez absolutní cesty).",
+  credential_url:
+    "URL nesmí nést přihlašovací údaje (jméno a heslo, token nebo klíč v parametru, tajný klíč).",
 };
 
 const enSchemaKind: Record<string, string> & { other: string } = {
@@ -43,6 +47,9 @@ const enSchemaKind: Record<string, string> & { other: string } = {
 const enSchemaRule: Record<string, string> = {
   executable_step_refs: "an executable step names at least one plan, task or issue.",
   done_step_evidence: "a done step names its evidence (evidence_refs).",
+  portable_path: "must be a portable path inside the data repository (no ../, no absolute path).",
+  credential_url:
+    "a URL must not carry a credential (user name and password, a token or key parameter, a secret).",
 };
 
 /** The issue of a record that does not match its schema, worded from its Zod issue. */
@@ -409,7 +416,23 @@ const cs = {
       link_refused: (p: Params) =>
         `${p.path} je symbolický odkaz; odkazy Mission Control nenásleduje.`,
       empty_start: () => "Prázdný start nesmí obsahovat plány ani roadmapy.",
-    } as Record<RuleIssueCode, (params: Params) => string>,
+      evidence_missing: (p: Params) =>
+        `Krok ${p.step} uvádí jako důkaz ${p.path}, ale takový soubor v datovém repozitáři není (velikost písmen se počítá).`,
+      evidence_not_file: (p: Params) =>
+        `Krok ${p.step} uvádí jako důkaz ${p.path}, což není soubor.`,
+      evidence_excluded: (p: Params) =>
+        `Krok ${p.step} uvádí jako důkaz ${p.path}, ale to leží v části, která se nikdy nepublikuje (.git, .repository-db, generated).`,
+      evidence_link: (p: Params) =>
+        `Krok ${p.step} uvádí jako důkaz ${p.path}, ke kterému se jde přes symbolický odkaz ${p.link}; odkazy Mission Control nenásleduje.`,
+      history_added: () =>
+        "Soubor není součástí zmrazené historie. Mission Control 4 do historie nic nepřidává; historii z verze 3 zmrazí jednou příkaz bun scripts/validate.ts --freeze-history.",
+      history_changed: () => "Soubor se od zmrazení historie změnil.",
+      history_removed: () => "Soubor patří do zmrazené historie, ale chybí.",
+      history_lock_invalid: (p: Params) =>
+        `Zámek historie history.lock.json není platný${p.detail ? ` (${p.detail})` : ""}.`,
+      read_failed: (p: Params) =>
+        `Soubor nebo adresář nejde přečíst (${p.detail}), takže ho kontrola nemohla projít.`,
+    } satisfies Record<RuleIssueCode, (params: Params) => string>,
   },
 };
 
@@ -763,6 +786,22 @@ const en: Messages = {
       config_missing: () => "The Mission Control settings are missing.",
       link_refused: (p) => `${p.path} is a symbolic link; Mission Control does not follow links.`,
       empty_start: () => "The empty start must hold no plans or roadmaps.",
+      evidence_missing: (p) =>
+        `Step ${p.step} names ${p.path} as its evidence, but the data repository has no such file (letter case counts).`,
+      evidence_not_file: (p) =>
+        `Step ${p.step} names ${p.path} as its evidence, which is not a file.`,
+      evidence_excluded: (p) =>
+        `Step ${p.step} names ${p.path} as its evidence, which lies where nothing is ever published (.git, .repository-db, generated).`,
+      evidence_link: (p) =>
+        `Step ${p.step} names ${p.path} as its evidence, reached through the symbolic link ${p.link}; Mission Control does not follow links.`,
+      history_added: () =>
+        "The file is not part of the frozen history. Mission Control 4 adds nothing to the history; the 3.x history is frozen once with bun scripts/validate.ts --freeze-history.",
+      history_changed: () => "The file changed since the history was frozen.",
+      history_removed: () => "The file is part of the frozen history but is gone.",
+      history_lock_invalid: (p) =>
+        `The history lock history.lock.json is not valid${p.detail ? ` (${p.detail})` : ""}.`,
+      read_failed: (p) =>
+        `The file or directory cannot be read (${p.detail}), so the check could not cover it.`,
     },
   },
 };

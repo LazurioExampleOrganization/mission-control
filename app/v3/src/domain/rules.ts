@@ -33,7 +33,25 @@ export type RuleIssueCode =
   /** A path of the data is a symbolic link, which is never followed. */
   | "link_refused"
   /** The empty start of the data repository template holds records. */
-  | "empty_start";
+  | "empty_start"
+  /** A done step's evidence names no file in the checkout; `params.step`, `params.path`. */
+  | "evidence_missing"
+  /** A step's evidence names a directory or other non-file. */
+  | "evidence_not_file"
+  /** A step's evidence lies where Git or repository-db keep files out of a commit. */
+  | "evidence_excluded"
+  /** A step's evidence is reached through a symbolic link; `params.link`. */
+  | "evidence_link"
+  /** A file of the frozen 3.x history is not in `history.lock.json`; `params.path`. */
+  | "history_added"
+  /** A file of the frozen history no longer has its frozen content. */
+  | "history_changed"
+  /** A file of the frozen history is gone. */
+  | "history_removed"
+  /** `history.lock.json` is not a valid lock; `params.detail`. */
+  | "history_lock_invalid"
+  /** A file or directory cannot be read, so the check did not cover it; `params.path`, `params.detail`. */
+  | "read_failed";
 
 export interface RuleIssue {
   /** The record the issue is about: a plan or roadmap code, a file, or `config`. */
