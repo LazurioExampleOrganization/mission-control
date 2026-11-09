@@ -1,5 +1,14 @@
 import { z } from "zod";
-import { isoDate, link, planCode, priority, status, taskId, text } from "./common.ts";
+import {
+  credentialFreeUrl,
+  isoDate,
+  link,
+  planCode,
+  priority,
+  status,
+  taskId,
+  text,
+} from "./common.ts";
 
 /**
  * A Mission Control plan: why something is done, for whom, its scope,
@@ -36,7 +45,7 @@ export const proposedTask = z.strictObject({
 });
 
 export const pullRequestRef = z.strictObject({
-  url: text,
+  url: credentialFreeUrl,
   status: z.string().optional(),
   note: z.string().optional(),
 });
@@ -91,7 +100,7 @@ export const plan = z.strictObject({
         .strictObject({
           task_id: text,
           custom_id: planCode,
-          url: text,
+          url: credentialFreeUrl,
           status: z.string().optional(),
           snapshot_path: text.optional(),
         })
@@ -100,7 +109,7 @@ export const plan = z.strictObject({
         .strictObject({
           system: text,
           id: text,
-          url: text,
+          url: credentialFreeUrl,
           status: z.string().optional(),
           snapshot_path: text.optional(),
         })

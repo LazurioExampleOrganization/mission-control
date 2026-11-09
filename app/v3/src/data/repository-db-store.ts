@@ -21,8 +21,10 @@ import type { RuleIssue } from "../domain/rules.ts";
 import { DEFAULT_LOCALE } from "../i18n/locale.ts";
 import {
   CONFIG_PATH,
-  checkParsedData,
+  checkData,
+  checkEvidence,
   type DataFile,
+  directoryReader,
   isRecordFile,
   linkRefused,
   type ParsedData,
@@ -95,6 +97,13 @@ export function createRepositoryDbStore(options: RepositoryDbStoreOptions): Miss
   /** Paths of the shared check (`data/mission-control/…`) under the engine's data layout. */
   const dataPath = (db: RepositoryDb, relative: string) =>
     posix.join(db.config.layout.data, relative.replace(/^data\//, ""));
+  /**
+   * The checkout for the checks that look beyond the records (evidence, the
+   * frozen history): the shared reader of `files.ts`, which checks every
+   * component and never follows a link, like the engine's own reads. Used
+   * only inside the sync host's `read` and `run`.
+   */
+  const reader = directoryReader(mountRoot);
 
   function listYaml(directory: string, refused: RuleIssue[]): string[] {
     const found: string[] = [];
@@ -201,6 +210,7 @@ export function createRepositoryDbStore(options: RepositoryDbStoreOptions): Miss
     baseRevision: Revision | null,
     newPath: (db: RepositoryDb) => string,
     replace: (data: Snapshot, path: string) => void,
+    files: (path: string) => RuleIssue[] = () => [],
   ): Promise<Stored<T>> {
     return engine(() =>
       host.run(`save-${kind}`, (db) => {
@@ -219,6 +229,14 @@ export function createRepositoryDbStore(options: RepositoryDbStoreOptions): Miss
         const path = existing?.path ?? newPath(db);
         replace(data, path);
         assertRulesFor(code, ruleInput(data));
+        const refused = files(path);
+        if (refused.length > 0) {
+          throw new StoreError(
+            "invalid_record",
+            `${code}: ${refused.map((issue) => issue.message).join("; ")}`,
+            refused,
+          );
+        }
         const revision = writeRecord(db, path, value, baseRevision);
         return { value, revision };
       }),
@@ -305,12 +323,14 @@ export function createRepositoryDbStore(options: RepositoryDbStoreOptions): Miss
             { path, value, revision: "" },
           ];
         },
+        // A roadmap's evidence must name files the data repository publishes.
+        (path) => checkEvidence(reader, [{ path, fileName: posix.basename(path), value }]),
       );
     },
     check() {
       return engine(() =>
         host.read((db) => {
-          return checkParsedData(snapshot(db).parsed);
+          return checkData(reader, snapshot(db).parsed, db.config.layout.data);
         }),
       );
     },

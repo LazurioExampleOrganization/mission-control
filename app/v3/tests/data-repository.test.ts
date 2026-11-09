@@ -1,67 +1,26 @@
-import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import {
-  cpSync,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  realpathSync,
-  rmSync,
-  symlinkSync,
-  writeFileSync,
-} from "node:fs";
-import { tmpdir } from "node:os";
+import { describe, expect, setDefaultTimeout, test } from "bun:test";
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { parseYaml, toStableYaml } from "@lazurio/repository-db";
 import { validateRepository } from "../../../templates/data-repo/scripts/validate.ts";
 import { renderOutputs } from "../src/cli/schema.ts";
 import { readDataDirectory } from "../src/data/directory.ts";
 import { createRepositoryDbStore } from "../src/data/repository-db-store.ts";
-import type { RuleIssue } from "../src/domain/rules.ts";
-import type { Locale } from "../src/i18n/locale.ts";
+import {
+  cleanupDataRepos,
+  codes,
+  dataRepo,
+  edit,
+  link,
+  PLAN,
+  ROADMAP,
+} from "./support/data-repo.ts";
 import { createFixtureRepo } from "./support/fixture-repo.ts";
-import { DATA_REPO_TEMPLATE, sampleDataFor } from "./support/seed.ts";
+import { DATA_REPO_TEMPLATE } from "./support/seed.ts";
 
 // Building the check bundle and running Git take longer than bun's default
 // of 5 s per test on a Windows runner.
 setDefaultTimeout(60_000);
-
-const ROADMAP = "data/mission-control/roadmaps/2026/RM-0001-operating-roadmap.yaml";
-const PLAN = "data/mission-control/plans/2026/10/EX-0004-second-sales-channel.yaml";
-
-const roots: string[] = [];
-afterEach(() => {
-  for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
-});
-
-/** A data repository as an Organization has it: the template and, optionally, examples. */
-function dataRepo(sample: Locale | null = "en"): string {
-  const root = mkdtempSync(join(realpathSync.native(tmpdir()), "mission-control-data-"));
-  roots.push(root);
-  cpSync(DATA_REPO_TEMPLATE, root, { recursive: true });
-  if (sample) cpSync(join(sampleDataFor(sample), "data"), join(root, "data"), { recursive: true });
-  return root;
-}
-
-// biome-ignore lint/suspicious/noExplicitAny: a test edits records of any shape
-function edit(root: string, path: string, change: (value: any) => void) {
-  const file = join(root, ...path.split("/"));
-  const value = parseYaml(readFileSync(file, "utf8"));
-  change(value);
-  writeFileSync(file, toStableYaml(value));
-}
-
-const codes = (issues: readonly RuleIssue[] | readonly { record: string; code: string }[]) =>
-  issues.map((issue) => `${issue.record} ${issue.code}`);
-
-/** A link, or false where the platform does not let this process create one. */
-function link(target: string, path: string, type: "dir" | "file"): boolean {
-  try {
-    symlinkSync(target, path, type);
-    return true;
-  } catch {
-    return false;
-  }
-}
+cleanupDataRepos();
 
 describe("data repository template", () => {
   test("its generated JSON Schemas and check bundle are current", async () => {
