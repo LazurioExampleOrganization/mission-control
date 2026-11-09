@@ -29,14 +29,73 @@ timing that does not end before it starts. The App refuses a save that breaks
 a rule about the saved record; `bun run validate` reports every problem of the
 data checkout.
 
+### Evidence and links
+
+- A roadmap step's local evidence (`evidence_refs[].path`) is a portable path
+  relative to the data repository: `/` between parts, printable ASCII, no
+  `.` or `..` part, no absolute path, nothing Windows refuses. The same rule
+  holds for the `path` of a plan's or roadmap's `links`.
+- The evidence names a file the data repository publishes: it exists with
+  exactly that name (letter case counts, as on the Linux runner of a pull
+  request), it is a regular file reached only through real directories, and
+  it does not lie in `.git/`, `.repository-db/` or `generated/`, which never
+  reach a commit. Mission Control 3.x asked for a Git-tracked or staged file
+  instead; repository-db validates a publish before it stages the draft, so
+  evidence added in the same draft would have been refused, and in a pull
+  request's checkout every file present is tracked anyway. A file an
+  Organization's own `.gitignore` leaves out is not detected here; the
+  `validate` run after the push to `v3` then misses it and fails.
+- No URL in a record carries a credential (`app/v3/src/domain/credentials.ts`):
+  no user info, no parameter named like a credential (`token`,
+  `access_token`, `api_key`, `password`, `secret`, `sig`…), no value shaped
+  like a known secret (GitHub, OpenAI and Slack tokens, AWS and Google keys,
+  JWTs, private keys, `Bearer …`), also percent-encoded or inside a URL nested
+  in a parameter. This holds for evidence URLs, `links`, a plan's pull
+  requests and its legacy sources. The rules are those of the 3.x validator.
+
+### The frozen 3.x history
+
+Older data repositories hold the history of Mission Control 3.x beside the
+records: `TODO.tasks.json`, `DONE.tasks.json`, `ISSUES.*.json`,
+`changesets/`, `import-reviews/` and `reports/`. Mission Control 4.x neither
+reads nor writes it. Plan fields that point to it (`todo_outputs`,
+`planning_target`, step `todo_refs` and `issue_refs`) are kept and shown,
+not resolved.
+
+The history stays exactly as the 3.x validator last accepted it.
+`data/mission-control/history.lock.json` names every file of the history with
+the SHA-256 digest of its content (line endings read as LF, so a Windows
+checkout does not count as a change), and the data check refuses:
+
+- a changed file (`history_changed`), a missing one (`history_removed`);
+- any file under `data/mission-control/` that is neither a record, the
+  settings, the lock, nor in the lock (`history_added`): nothing new enters
+  the history, and nothing else is kept beside the records;
+- a symbolic link in the history, and a lock that names a record or is not
+  valid (`history_lock_invalid`).
+
+A data repository without a lock has an empty frozen history: the empty start
+of `templates/data-repo/` needs none. The lock is written by
+`bun scripts/validate.ts --freeze-history` in the data repository, never by
+hand (its shape is `schemas/history.schema.json`). A freeze is deliberate: it
+prints what it adds, changes or removes, and the change of the lock is
+reviewed in its pull request.
+
+Freezing the bytes instead of re-checking the shape of every ledger and
+changeset keeps what the 3.x validator verified (their schemas, the writer
+audit and provenance of published changesets) without carrying its 6000
+lines into 4.x: a history that cannot change needs no second check of its
+shape.
+
 ### One check everywhere
 
-`app/v3/src/data/files.ts` reads the records of a data repository and checks
-them: the settings, every plan and roadmap against its Zod schema (with the
+`app/v3/src/data/files.ts` reads the data of a data repository and checks
+it: the settings, every plan and roadmap against its Zod schema (with the
 refinements a JSON Schema cannot express, such as "a done roadmap step names
-its evidence" and "an executable step names a plan, task or issue"), and the
-rules across records, with the engine's YAML parser. The same code runs in
-four places:
+its evidence", "an executable step names a plan, task or issue", portable
+paths and URLs without credentials), the rules across records, the evidence
+files and the frozen history, with the engine's YAML parser. The same code
+runs in four places:
 
 | Where | How |
 | --- | --- |
@@ -45,21 +104,15 @@ four places:
 | the data repository's validator, before every publish | `bun scripts/validate.ts`, run by repository-db |
 | the data repository's required CI check `validate` | the same command on every pull request |
 
-So a data pull request passes exactly when the App accepts its records, and a
-record the App would skip cannot be merged. Every issue has a stable `code`
-and an English `message`; the App words the code in the page's language.
+So a data pull request passes exactly when the App accepts it, and a record
+the App would skip cannot be merged. Every issue has a stable `code` and an
+English `message`; the App words the code in the page's language. The App
+also refuses to save a roadmap whose evidence names no published file.
 
 Reading never leaves the checkout: a symbolic link in any component of a path
-(the `data` directory, a record directory, a record, the settings, the check
-bundle) is refused as an issue and nothing behind it is read.
-
-### What 4.x does not read
-
-Older data repositories may hold `TODO.tasks.json`, `DONE.tasks.json`,
-`ISSUES.*.json`, `changesets/`, `import-reviews/` and `reports/`. Mission
-Control 4.x neither reads nor changes them; they stay as history. Plan fields
-that point to them (`todo_outputs`, `planning_target`, step `todo_refs` and
-`issue_refs`) are kept and shown, not resolved.
+(the `data` directory, a record directory, a record, the settings, evidence,
+the history, the lock, the check bundle) is refused as an issue and nothing
+behind it is read.
 
 ## The data repository
 
@@ -73,9 +126,10 @@ from ([`adoption.md`](adoption.md)):
   `bun run schema:export`. `bun run check` fails when the bundle is stale, and
   the tests prove the validator reports exactly what the App reports;
 - `schemas/*.schema.json`: JSON Schemas **generated** from the Zod schemas,
-  for editors and tools in other languages. They describe the shape of one
-  record; the refinements and the rules across records live only in the
-  bundle;
+  for editors and tools in other languages: the plan, the roadmap, the
+  settings and the history lock. They describe the shape of one file; the
+  refinements, the rules across records, the evidence and the history checks
+  live only in the bundle;
 - `data/mission-control/mission-control.config.json` with a placeholder
   prefix `ORG`, which the Organization replaces;
 - `.github/workflows/validate.yml`, the CI job `validate` that runs the
@@ -120,7 +174,13 @@ in between:
 1. Prepare two pull requests and keep both green: the Module's merge of the
    release tag, and the data repository's control plane (`scripts/` with the
    check bundle, `schemas/`, `repository-db.yaml` with `validate: [bun
-   scripts/validate.ts]`, `.github/workflows/validate.yml`, `.gitattributes`).
+   scripts/validate.ts]`, `.github/workflows/validate.yml`, `.gitattributes`)
+   with the frozen history. Freeze it in that pull request from the history
+   as the 3.x validator last accepted it: first check that the branch did not
+   change it (`git diff --exit-code origin/v3 -- data/mission-control
+   ':!data/mission-control/plans' ':!data/mission-control/roadmaps'` prints
+   nothing), then run `bun scripts/validate.ts --freeze-history`, commit
+   `data/mission-control/history.lock.json` and run `bun scripts/validate.ts`.
 2. An Owner changes the Module's required check from `bun run test
    (ubuntu-latest)` to `bun run check (ubuntu-latest)` in the Organization's
    ruleset (the Windows job is path-filtered and cannot be required), and
@@ -131,4 +191,5 @@ in between:
    small change to prove the path.
 
 Pending changesets of the 3.x publish flow are published or dropped before
-the window: 4.x does not read them.
+the window: 4.x does not read them, and once the history is frozen they stay
+as they are.

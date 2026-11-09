@@ -2,6 +2,60 @@
 
 ## Unreleased
 
+## 4.1.1 — proposed, not released
+
+The data check again holds three safeguards the Mission Control 3.x
+validator had and 4.0 dropped (#21, from the review of the first adoption
+into an Organization). As in 4.1.0, the App and the data repository's
+validator run the same check.
+
+### For Organizations and agents
+
+- **Evidence names a published file.** A roadmap step's local evidence is a
+  portable path relative to the data repository (no `../`, no absolute path,
+  nothing Windows refuses), and it names a regular file that exists with
+  exactly that name, reached only through real directories and outside
+  `.git/`, `.repository-db/` and `generated/`. The same path rule holds for
+  `links[].path`. The App refuses to save a roadmap whose evidence is
+  missing. 3.x asked for a Git-tracked or staged file; repository-db validates
+  a publish before staging it, so 4.1.1 asks for a file that will be
+  published instead ([`docs/data.md`](docs/data.md), "Evidence and links").
+- **No credential in a URL.** Evidence URLs, `links[].url`, a plan's pull
+  request URLs and legacy source URLs refuse user info, parameters named like
+  a credential (`token`, `access_token`, `api_key`, `password`, `sig`…) and
+  values shaped like a known secret, also percent-encoded or nested
+  (`app/v3/src/domain/credentials.ts`, the rules of the 3.x validator).
+- **The 3.x history is frozen.** `data/mission-control/history.lock.json`
+  names every file of the history (ledgers, changesets, import reviews,
+  reports) with the digest of its content; the check refuses a changed,
+  removed or new file there, and any other file beside the records. The
+  data repository writes the lock with `bun scripts/validate.ts
+  --freeze-history`, once in the window that moves it to 4.x and again only
+  for a deliberate change, reviewed as a change of the lock. A repository
+  without a lock has an empty history, so the empty start needs none
+  ([`docs/data.md`](docs/data.md), "The frozen 3.x history").
+- New issue codes (`evidence_missing`, `evidence_not_file`,
+  `evidence_excluded`, `evidence_link`, `history_added`, `history_changed`,
+  `history_removed`, `history_lock_invalid`) and schema rules
+  (`portable_path`, `credential_url`), worded in Czech and English on the
+  data check of Draft & Publish.
+- `templates/data-repo/schemas/history.schema.json`, the shape of the lock.
+
+### Adopting 4.1.1
+
+- **From 4.1.0**: merge the tag ([`docs/extending.md`](docs/extending.md)).
+  The data repository takes `scripts/validate.ts`,
+  `scripts/mission-control-check.js`, `schemas/history.schema.json`,
+  `README.md` and `AGENTS.md` of `templates/data-repo/` in a pull request
+  merged right before the Module's. A repository that holds a 3.x history
+  freezes it in that pull request (`bun scripts/validate.ts
+  --freeze-history`, after checking the history is unchanged since `v3`).
+  Check the records first with `bun run validate -- --data <checkout>`:
+  evidence that names no file and URLs with credentials now fail.
+- **From 3.x**: the coordinated window of [`docs/data.md`](docs/data.md)
+  ("A data repository of Mission Control 3.x"), now with the freeze in the
+  data repository's control-plane pull request.
+
 ## 4.1.0 — 2026-11-08
 
 Mission Control speaks Czech and English and says what it is for, and the

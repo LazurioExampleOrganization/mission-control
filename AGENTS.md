@@ -45,9 +45,13 @@ rights of its people, not this repository's maintainers.
   never keep a second write queue, poll loop or conflict state.
 - `app/v3/tests/store-contract.ts` is the shared suite of the port. A change
   of the port's behaviour changes the suite, and every implementation passes it.
-- `app/v3/src/data/files.ts` is the one reading and check of records from
-  files. The App, `bun run validate` and the data repository's validator all
-  run it; never write a second validator. After a change of a schema, a rule
+- `app/v3/src/data/files.ts` is the one reading and check of the data from
+  files: records, rules across records, evidence files and the frozen 3.x
+  history (`docs/data.md`). The App, `bun run validate` and the data
+  repository's validator all run it; never write a second validator. Its
+  reader checks every path component and never follows a link, as the
+  engine's own reads; the repository-db store uses it only inside the sync
+  host's `read` and `run`. After a change of a schema, a rule
   or `files.ts`, run `bun run schema:export` and commit the regenerated
   `templates/data-repo/schemas/` and
   `templates/data-repo/scripts/mission-control-check.js` in the same pull
