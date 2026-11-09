@@ -424,10 +424,10 @@ const cs = {
         `Krok ${p.step} uvádí jako důkaz ${p.path}, ale to leží v části, která se nikdy nepublikuje (.git, .repository-db, generated).`,
       evidence_link: (p: Params) =>
         `Krok ${p.step} uvádí jako důkaz ${p.path}, ke kterému se jde přes symbolický odkaz ${p.link}; odkazy Mission Control nenásleduje.`,
-      history_added: (p: Params) =>
-        `${p.path} není součástí zmrazené historie. Mission Control 4 do historie nic nepřidává; historii z verze 3 zmrazí jednou příkaz bun scripts/validate.ts --freeze-history.`,
-      history_changed: (p: Params) => `${p.path} se od zmrazení historie změnil.`,
-      history_removed: (p: Params) => `${p.path} patří do zmrazené historie, ale chybí.`,
+      history_added: () =>
+        "Soubor není součástí zmrazené historie. Mission Control 4 do historie nic nepřidává; historii z verze 3 zmrazí jednou příkaz bun scripts/validate.ts --freeze-history.",
+      history_changed: () => "Soubor se od zmrazení historie změnil.",
+      history_removed: () => "Soubor patří do zmrazené historie, ale chybí.",
       history_lock_invalid: (p: Params) =>
         `Zámek historie history.lock.json není platný${p.detail ? ` (${p.detail})` : ""}.`,
     } satisfies Record<RuleIssueCode, (params: Params) => string>,
@@ -792,10 +792,10 @@ const en: Messages = {
         `Step ${p.step} names ${p.path} as its evidence, which lies where nothing is ever published (.git, .repository-db, generated).`,
       evidence_link: (p) =>
         `Step ${p.step} names ${p.path} as its evidence, reached through the symbolic link ${p.link}; Mission Control does not follow links.`,
-      history_added: (p) =>
-        `${p.path} is not part of the frozen history. Mission Control 4 adds nothing to the history; the 3.x history is frozen once with bun scripts/validate.ts --freeze-history.`,
-      history_changed: (p) => `${p.path} changed since the history was frozen.`,
-      history_removed: (p) => `${p.path} is part of the frozen history but is gone.`,
+      history_added: () =>
+        "The file is not part of the frozen history. Mission Control 4 adds nothing to the history; the 3.x history is frozen once with bun scripts/validate.ts --freeze-history.",
+      history_changed: () => "The file changed since the history was frozen.",
+      history_removed: () => "The file is part of the frozen history but is gone.",
       history_lock_invalid: (p) =>
         `The history lock history.lock.json is not valid${p.detail ? ` (${p.detail})` : ""}.`,
     },

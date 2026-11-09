@@ -51,12 +51,9 @@ describe("data issues", () => {
       code: "history_changed",
       params: { path: "data/mission-control/DONE.tasks.json" },
     } as const;
-    expect(issueText(MESSAGES.cs, history)).toBe(
-      "data/mission-control/DONE.tasks.json se od zmrazení historie změnil.",
-    );
-    expect(issueText(MESSAGES.en, history)).toBe(
-      "data/mission-control/DONE.tasks.json changed since the history was frozen.",
-    );
+    // The list shows the file beside the text, so the text does not repeat it.
+    expect(issueText(MESSAGES.cs, history)).toBe("Soubor se od zmrazení historie změnil.");
+    expect(issueText(MESSAGES.en, history)).toBe("The file changed since the history was frozen.");
   });
 });
 
