@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { formatDate, formatPeriod, plural } from "../src/i18n/format.ts";
-import { MESSAGES } from "../src/i18n/messages.ts";
+import { issueText, MESSAGES } from "../src/i18n/messages.ts";
 import { lazurioLocale, resolveLocale } from "../src/ui/locale-source.ts";
 
 const CZECH = /[ěščřžýáíéůúňťďĚŠČŘŽÝÁÍÉŮÚŇŤĎ]/;
@@ -37,6 +37,23 @@ describe("catalogs", () => {
 
   test("the English catalog holds no Czech", () => {
     expect(texts(MESSAGES.en).filter(([, text]) => CZECH.test(text))).toEqual([]);
+  });
+});
+
+describe("data issues", () => {
+  test("the new safeguards read in both languages", () => {
+    const schema = (rule: string) =>
+      ({ code: "schema", params: { path: "links.0.url", kind: "custom", rule } }) as const;
+    expect(issueText(MESSAGES.cs, schema("credential_url"))).toContain("přihlašovací údaje");
+    expect(issueText(MESSAGES.en, schema("credential_url"))).toContain("credential");
+    expect(issueText(MESSAGES.cs, schema("portable_path"))).toContain("přenositelná cesta");
+    const history = {
+      code: "history_changed",
+      params: { path: "data/mission-control/DONE.tasks.json" },
+    } as const;
+    // The list shows the file beside the text, so the text does not repeat it.
+    expect(issueText(MESSAGES.cs, history)).toBe("Soubor se od zmrazení historie změnil.");
+    expect(issueText(MESSAGES.en, history)).toBe("The file changed since the history was frozen.");
   });
 });
 

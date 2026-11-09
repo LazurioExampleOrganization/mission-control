@@ -1,5 +1,15 @@
 import { z } from "zod";
-import { isoDate, planCode, priority, status, taskId, text } from "./common.ts";
+import {
+  credentialFreeUrl,
+  httpUrl,
+  isoDate,
+  planCode,
+  portablePath,
+  priority,
+  status,
+  taskId,
+  text,
+} from "./common.ts";
 
 /**
  * A roadmap orders plans into steps over time. One roadmap is one YAML record
@@ -31,13 +41,19 @@ const EVIDENCE_KINDS = [
   "external",
 ] as const;
 
-/** Evidence inside the data repository (`path`) or outside it (`url`, verified externally). */
+/**
+ * Evidence inside the data repository (`path`) or outside it (`url`, verified
+ * externally). A path is portable and relative to the repository; that it
+ * names a file the repository publishes is a rule of the data check
+ * (`checkEvidence` in `src/data/files.ts`), which reads the checkout. A URL
+ * carries no credential.
+ */
 export const evidenceRef = z.union([
-  z.strictObject({ label: text, kind: z.enum(EVIDENCE_KINDS), path: text }),
+  z.strictObject({ label: text, kind: z.enum(EVIDENCE_KINDS), path: portablePath }),
   z.strictObject({
     label: text,
     kind: z.enum(EVIDENCE_KINDS),
-    url: text.regex(/^https?:\/\//),
+    url: httpUrl,
     verification: z.literal("external"),
   }),
 ]);
@@ -114,8 +130,8 @@ export const roadmap = z.strictObject({
   links: z
     .array(
       z.union([
-        z.strictObject({ label: text, path: text, url: text.optional() }),
-        z.strictObject({ label: text, url: text }),
+        z.strictObject({ label: text, path: portablePath, url: credentialFreeUrl.optional() }),
+        z.strictObject({ label: text, url: credentialFreeUrl }),
       ]),
     )
     .optional(),

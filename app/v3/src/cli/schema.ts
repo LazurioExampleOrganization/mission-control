@@ -1,6 +1,7 @@
 import { join, resolve } from "node:path";
 import { z } from "zod";
 import { missionControlConfig } from "../domain/config.ts";
+import { HISTORY_SCHEMA_VERSION, historyLock } from "../domain/history.ts";
 import { PLAN_SCHEMA_VERSION, plan } from "../domain/plan.ts";
 import { ROADMAP_SCHEMA_VERSION, roadmap } from "../domain/roadmap.ts";
 import { DATA_REPO_TEMPLATE } from "./paths.ts";
@@ -34,6 +35,12 @@ const SCHEMAS = [
     id: "companiesascode.mission_control.config.v1",
     title: "Mission Control settings",
     schema: missionControlConfig,
+  },
+  {
+    file: "history.schema.json",
+    id: HISTORY_SCHEMA_VERSION,
+    title: "Mission Control frozen history (history.lock.json)",
+    schema: historyLock,
   },
 ] as const;
 

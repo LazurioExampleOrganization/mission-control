@@ -13,3 +13,10 @@
   release, in the same window as the Module's merge; never edit them here.
 - Run `bun scripts/validate.ts` before you open a pull request. It is the
   App's own check: when it fails, the App would refuse or skip the record.
+- Never change, add or remove a file of the frozen history
+  (`data/mission-control/history.lock.json` names them) and never edit the
+  lock. A deliberate change of the history is
+  `bun scripts/validate.ts --freeze-history` on the user's instruction, in a
+  pull request of its own that says why.
+- Evidence of a roadmap step is a file of this repository, by a portable
+  relative path; no URL carries a credential (a token, a key, user info).
