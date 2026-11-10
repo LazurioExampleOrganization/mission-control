@@ -19,4 +19,6 @@
   `bun scripts/validate.ts --freeze-history` on the user's instruction, in a
   pull request of its own that says why.
 - Evidence of a roadmap step is a file of this repository, by a portable
-  relative path; no URL carries a credential (a token, a key, user info).
+  relative path, outside `data/mission-control/` (for example `evidence/`)
+  and not left out by `.gitignore` or `.git/info/exclude`: Git would never
+  publish it. No URL carries a credential (a token, a key, user info).
