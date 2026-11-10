@@ -422,6 +422,8 @@ const cs = {
         `Krok ${p.step} uvádí jako důkaz ${p.path}, což není soubor.`,
       evidence_excluded: (p: Params) =>
         `Krok ${p.step} uvádí jako důkaz ${p.path}, ale to leží v části, která se nikdy nepublikuje (.git, .repository-db, generated).`,
+      evidence_ignored: (p: Params) =>
+        `Krok ${p.step} uvádí jako důkaz ${p.path}, ale v publikovaném commitu nebude: ${p.ignored === p.path ? "soubor" : `adresář ${p.ignored}`} vylučuje pravidlo ${p.pattern} v ${p.source}.${p.unpublished ? ` Pravidla v ${p.unpublished}, která by ho tu pustila, se sama nepublikují.` : ""}`,
       evidence_link: (p: Params) =>
         `Krok ${p.step} uvádí jako důkaz ${p.path}, ke kterému se jde přes symbolický odkaz ${p.link}; odkazy Mission Control nenásleduje.`,
       history_added: () =>
@@ -792,6 +794,8 @@ const en: Messages = {
         `Step ${p.step} names ${p.path} as its evidence, which is not a file.`,
       evidence_excluded: (p) =>
         `Step ${p.step} names ${p.path} as its evidence, which lies where nothing is ever published (.git, .repository-db, generated).`,
+      evidence_ignored: (p) =>
+        `Step ${p.step} names ${p.path} as its evidence, but the published commit will not hold it: ${p.ignored === p.path ? "the file" : `the directory ${p.ignored}`} is excluded by the rule ${p.pattern} in ${p.source}.${p.unpublished ? ` The rules in ${p.unpublished}, which would let it in here, are not published themselves.` : ""}`,
       evidence_link: (p) =>
         `Step ${p.step} names ${p.path} as its evidence, reached through the symbolic link ${p.link}; Mission Control does not follow links.`,
       history_added: () =>
