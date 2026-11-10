@@ -18,6 +18,7 @@ import { decide, type IgnoreDialect, parseIgnoreFile, wildmatch } from "../src/d
 // asking it, and the check itself refuses what either reading leaves out.
 //
 // `MC_IGNORE_ROUNDS=<n>` sets how many generated cases run (CI: the default),
+// `MC_IGNORE_FROM=<n>` the first seed (to run many in parts), and
 // `MC_IGNORE_SEED=<n>` replays one.
 
 // Every case is a Git repository; on a Windows runner that takes a while.
@@ -163,7 +164,7 @@ const SETS = [
 ];
 
 const ROUNDS = Number(process.env.MC_IGNORE_ROUNDS ?? 40);
-const FIRST = Number(process.env.MC_IGNORE_SEED ?? 1);
+const FIRST = Number(process.env.MC_IGNORE_SEED ?? process.env.MC_IGNORE_FROM ?? 1);
 const LAST = process.env.MC_IGNORE_SEED ? FIRST : FIRST + ROUNDS - 1;
 
 describe("the ignore rules compared with Git", () => {
