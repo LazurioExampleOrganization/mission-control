@@ -4,7 +4,7 @@ import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { directoryReader, IgnoreRules } from "../src/data/files.ts";
-import { decide, parseIgnoreFile, wildmatch } from "../src/domain/gitignore.ts";
+import { decide, type IgnoreDialect, parseIgnoreFile, wildmatch } from "../src/domain/gitignore.ts";
 
 // The ignore rules without Git (`src/domain/gitignore.ts`), compared with Git
 // as a black box. Every expected answer here comes from Git while the test
@@ -12,6 +12,10 @@ import { decide, parseIgnoreFile, wildmatch } from "../src/domain/gitignore.ts";
 // --all` takes, and anything it does not list is ignored. That is the
 // evidence the matcher behaves like Git; it was written from Git's
 // documentation and these answers, not from Git's code.
+//
+// Git versions read a `**` glued to a name differently (`IgnoreDialect`):
+// each comparison uses the reading of the Git that runs the test, found by
+// asking it, and the check itself refuses what either reading leaves out.
 //
 // `MC_IGNORE_ROUNDS=<n>` sets how many generated cases run (CI: the default),
 // `MC_IGNORE_SEED=<n>` replays one.
@@ -56,14 +60,27 @@ function write(root: string, path: string, content: string | Uint8Array = "x\n")
 const listed = (root: string) =>
   new Set(git(root, ["ls-files", "--others", "--exclude-standard", "-z"]).split("\0"));
 
-/** The paths Git leaves out, and the paths our rules leave out, in the same order. */
+// How the Git running this test reads `a**/b`: does it leave out `a/x/b`?
+function dialectOfGit(): IgnoreDialect {
+  const root = repository();
+  write(root, ".gitignore", "a**/b\n");
+  write(root, "a/x/b");
+  write(root, "a/b");
+  const kept = listed(root);
+  // Both readings leave out `a/b`; otherwise the probe itself is wrong.
+  if (kept.has("a/b")) throw new Error("git ls-files did not apply a**/b at all");
+  return kept.has("a/x/b") ? "documented" : "legacy";
+}
+const DIALECT = dialectOfGit();
+
+/** The paths Git leaves out, and the paths our rules leave out in its reading. */
 function compare(root: string, paths: readonly string[]) {
   const kept = listed(root);
   const rules = new IgnoreRules(directoryReader(root));
   const sorted = [...paths].sort();
   const result = {
     git: sorted.filter((path) => !kept.has(path)),
-    ours: sorted.filter((path) => rules.explain(path).local !== null),
+    ours: sorted.filter((path) => rules.explain(path, [DIALECT]).local !== null),
   };
   expect(rules.issues).toEqual([]);
   return result;
@@ -339,7 +356,7 @@ describe("the ignore rules compared with Git", () => {
     const matched = paths.filter((path) => {
       const [directory = "", name = ""] = path.split("/");
       const set = SETS[Number.parseInt(directory.slice(3), 10)] ?? "";
-      return wildmatch(encode(`q${set}q`), encode(name), true);
+      return wildmatch(encode(`q${set}q`), encode(name), true, DIALECT);
     });
     expect(matched).toEqual(paths.filter((path) => leftOut.includes(path)));
   });
@@ -418,6 +435,33 @@ describe("the ignore rules compared with Git", () => {
     const { git: leftOut, ours } = compare(root, paths);
     expect(ours).toEqual(leftOut);
     expect(leftOut.length).toBeGreaterThan(STARS.length * 3);
+  });
+
+  test("evidence that either reading of a glued ** leaves out is refused", () => {
+    const root = repository();
+    // `x**/y.txt`: Git 2.43 also leaves out `xa/b/y.txt`, Git 2.56 does not;
+    // `!z**/y.txt` re-includes `za/b/y.txt` in Git 2.43 only.
+    write(root, ".gitignore", "x**/y.txt\n*.md\n!z**/y.md\n");
+    for (const path of ["xa/b/y.txt", "xa/y.txt", "za/b/y.md", "za/y.md", "w/y.txt"]) {
+      write(root, path);
+    }
+    const rules = new IgnoreRules(directoryReader(root));
+    const view = (path: string, dialect: IgnoreDialect) =>
+      rules.explain(path, [dialect]).local?.rule.pattern ?? null;
+    expect(view("xa/b/y.txt", "legacy")).toBe("x**/y.txt");
+    expect(view("xa/b/y.txt", "documented")).toBeNull();
+    expect(view("za/b/y.md", "legacy")).toBeNull();
+    expect(view("za/b/y.md", "documented")).toBe("*.md");
+    const refused = ["xa/b/y.txt", "xa/y.txt", "za/b/y.md", "za/y.md", "w/y.txt"].filter((path) =>
+      rules.ignoredFile(path),
+    );
+    expect(refused).toEqual(["xa/b/y.txt", "xa/y.txt", "za/b/y.md"]);
+    // The Git running this test agrees with its own reading.
+    const kept = listed(root);
+    expect(["xa/b/y.txt", "za/b/y.md"].filter((path) => !kept.has(path))).toEqual(
+      DIALECT === "legacy" ? ["xa/b/y.txt"] : ["za/b/y.md"],
+    );
+    expect(rules.issues).toEqual([]);
   });
 
   test("a deeper .gitignore decides before a shallower one and before info/exclude", () => {

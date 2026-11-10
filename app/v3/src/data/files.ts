@@ -12,7 +12,9 @@ import { join, resolve } from "node:path";
 import type { MissionControlConfig } from "../domain/config.ts";
 import {
   decide,
+  IGNORE_DIALECTS,
   type IgnoreDecision,
+  type IgnoreDialect,
   type IgnoreLevel,
   parseIgnoreFile,
 } from "../domain/gitignore.ts";
@@ -492,8 +494,15 @@ export class IgnoreRules {
    * this checkout alone and counts only in `local`; its rules come after
    * every `.gitignore` and can only add exclusions. So a file neither view
    * ignores is staged here and passes on the published checkout too.
+   *
+   * A path counts as left out when any of `dialects` leaves it out, the two
+   * readings of Git versions by default (`IgnoreDialect`): the check cannot
+   * know which Git publishes, so it refuses what either would leave out.
    */
-  explain(path: string): {
+  explain(
+    path: string,
+    dialects: readonly IgnoreDialect[] = IGNORE_DIALECTS,
+  ): {
     local: IgnoreDecision | null;
     published: IgnoreDecision | null;
     unpublished: string[];
@@ -507,8 +516,11 @@ export class IgnoreRules {
       return exclude ? [...levels, exclude] : levels;
     };
     const ignoredIn = (levels: IgnoreLevel[], target: string, isDirectory: boolean) => {
-      const decision = decide(levels, target, isDirectory);
-      return decision?.ignored ? decision : null;
+      for (const dialect of dialects) {
+        const decision = decide(levels, target, isDirectory, dialect);
+        if (decision?.ignored) return decision;
+      }
+      return null;
     };
     const enter = (directory: string, publishedExcluded = false) => {
       const level = this.level(directory);

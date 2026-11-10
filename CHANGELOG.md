@@ -25,7 +25,9 @@ review of the adoption of 4.1.1 into an Organization).
   Git while it runs: fixed rules, rule files read line by line, every set
   against every byte, generated rule files and generated trees (ranges
   reversed and at the edges, classes, escapes, `**` everywhere, negations at
-  every depth, ignored and tracked rule files, `.git/info/exclude`).
+  every depth, ignored and tracked rule files, `.git/info/exclude`). A `**`
+  glued to a name (`a**/b`), which Git 2.43 and Git 2.56 read differently,
+  is read both ways, and evidence either reading leaves out is refused.
 - The check decides as `git add --all` does here and as it will itself on
   the published checkout, where a nested `.gitignore` that is not published
   itself cannot let evidence in. Evidence that passes here is in the

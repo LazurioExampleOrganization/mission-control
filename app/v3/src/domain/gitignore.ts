@@ -30,7 +30,7 @@
  * - two or more `*` that fill a whole part between slashes match across
  *   them: `**` followed by `/` is zero or more directories, `**` at the
  *   end, or before an escaped slash `\/`, any run of bytes, slashes
- *   included; elsewhere they are one `*`;
+ *   included; elsewhere they are one `*` (but see `IgnoreDialect`);
  * - `\` makes the next byte literal; a `\` at the end matches nothing;
  * - `[...]` is one byte of a set (`!` or `^` first negates it, `]` first is
  *   a member): bytes, escapes, ranges `a-z` (a reversed range such as `z-a`
@@ -38,6 +38,22 @@
  *   a member) and the ASCII classes `[:alpha:]` and the like; it never
  *   matches `/`. An unclosed set or an unknown class matches nothing.
  */
+
+// The two ways Git versions read a `**` glued to the literal beginning of a
+// rule, as in `a**/b` or `x**`, seen by asking each Git as a black box:
+//
+// - `documented`: as gitignore(5) says, such a `**` is one `*`, so `a**/b`
+//   is `a*/b` (Git 2.56);
+// - `legacy`: the `**` starts a part of its own and crosses slashes, so
+//   `a**/b` also matches `a/x/b` and `ab` (Git 2.43, the Git of Ubuntu
+//   24.04, where Lazurio Environments publish).
+//
+// Every other rule reads the same in both. The data check refuses evidence
+// that either reading leaves out, since it cannot know which Git publishes.
+export type IgnoreDialect = "documented" | "legacy";
+
+/** Both readings, in the order the check asks them. */
+export const IGNORE_DIALECTS: readonly IgnoreDialect[] = ["documented", "legacy"];
 
 /** One line of a rule file. */
 export interface IgnoreRule {
@@ -53,8 +69,8 @@ export interface IgnoreRule {
   readonly directoryOnly: boolean;
   /** No `/` before the end: the rule matches a path's last name, at any depth. */
   readonly nameOnly: boolean;
-  /** The compiled pattern; null when it can match nothing. */
-  readonly tokens: readonly Token[] | null;
+  /** The compiled pattern in each reading; null when it can match nothing. */
+  readonly tokens: Readonly<Record<IgnoreDialect, readonly Token[] | null>>;
 }
 
 /** The rules of one rule file and the directory they apply below ("" for the root). */
@@ -196,21 +212,23 @@ function readSet(pattern: Uint8Array, start: number): { members: Uint8Array; nex
 
 // Compiles a pattern into tokens, or null when it can match nothing.
 //
-// With `pathname`, wildcards stop at `/` and whole-part `**` cross it. Git
-// compares the literal beginning of a rule, up to its first `*`, `?`, `[`
-// or `\`, on its own and matches the rest as a pattern that starts there:
-// so `a**/b` is `a` followed by `**/b`, which may cross a slash from the
-// middle of a name, while in `*a**/b` the `**` is a plain `*`. Black-box
-// comparisons with Git showed exactly this, so a `**` right after the
-// literal beginning counts as starting a part. A whole-part `**` before an
-// escaped slash `\/` crosses slashes but is no `**/`: `a/**\/b` needs a
-// directory between `a` and `b`, as Git was seen to require.
-function compile(pattern: Uint8Array, pathname: boolean): Token[] | null {
+// With `pathname`, wildcards stop at `/` and whole-part `**` cross it. In
+// the `legacy` reading, Git 2.43 was seen to treat the literal beginning of
+// a rule, up to its first `*`, `?`, `[` or `\`, on its own and the rest as
+// a pattern that starts there: `a**/b` is `a` followed by `**/b`, which may
+// cross a slash from the middle of a name, while in `*a**/b` the `**` is a
+// plain `*`. So there a `**` right after the literal beginning counts as
+// starting a part. A whole-part `**` before an escaped slash `\/` crosses
+// slashes but is no `**/`: `a/**\/b` needs a directory between `a` and `b`,
+// as both Gits were seen to require.
+function compile(pattern: Uint8Array, pathname: boolean, dialect: IgnoreDialect): Token[] | null {
   let literal = 0;
-  while (literal < pattern.length) {
-    const byte = pattern[literal];
-    if (byte === STAR || byte === QUESTION || byte === OPEN || byte === BACKSLASH) break;
-    literal += 1;
+  if (dialect === "legacy") {
+    while (literal < pattern.length) {
+      const byte = pattern[literal];
+      if (byte === STAR || byte === QUESTION || byte === OPEN || byte === BACKSLASH) break;
+      literal += 1;
+    }
   }
   const tokens: Token[] = [];
   let index = 0;
@@ -308,8 +326,13 @@ function matches(tokens: readonly Token[], text: Uint8Array, pathname: boolean):
  * `pathname`, wildcards do not match `/` and whole-part `**` do, as in a
  * rule with a slash.
  */
-export function wildmatch(pattern: Uint8Array, text: Uint8Array, pathname: boolean): boolean {
-  const tokens = compile(pattern, pathname);
+export function wildmatch(
+  pattern: Uint8Array,
+  text: Uint8Array,
+  pathname: boolean,
+  dialect: IgnoreDialect = "documented",
+): boolean {
+  const tokens = compile(pattern, pathname, dialect);
   return tokens !== null && matches(tokens, text, pathname);
 }
 
@@ -349,7 +372,10 @@ function parseLine(line: Uint8Array, source: string, number: number): IgnoreRule
     negated,
     directoryOnly,
     nameOnly,
-    tokens: compile(body, true),
+    tokens: {
+      documented: compile(body, true, "documented"),
+      legacy: compile(body, true, "legacy"),
+    },
   };
 }
 
@@ -371,16 +397,18 @@ export function parseIgnoreFile(content: Uint8Array | string, source: string): I
 }
 
 /**
- * The rule that decides a path, or null when none matches. `levels` go from
- * the deepest rule file to the shallowest, `.git/info/exclude` last: the
- * first level with a matching rule decides, and within a level the last
- * matching rule. Whether a directory above the path is excluded is the
- * caller's walk (`IgnoreRules` in `src/data/files.ts`).
+ * The rule that decides a path in one reading, or null when none matches.
+ * `levels` go from the deepest rule file to the shallowest,
+ * `.git/info/exclude` last: the first level with a matching rule decides,
+ * and within a level the last matching rule. Whether a directory above the
+ * path is excluded is the caller's walk (`IgnoreRules` in
+ * `src/data/files.ts`).
  */
 export function decide(
   levels: readonly IgnoreLevel[],
   path: string,
   isDirectory: boolean,
+  dialect: IgnoreDialect = "documented",
 ): IgnoreDecision | null {
   for (const level of levels) {
     let relative: string;
@@ -391,8 +419,9 @@ export function decide(
     const name = encoder.encode(relative.slice(relative.lastIndexOf("/") + 1));
     for (let index = level.rules.length - 1; index >= 0; index -= 1) {
       const rule = level.rules[index];
-      if (!rule?.tokens || (rule.directoryOnly && !isDirectory)) continue;
-      if (matches(rule.tokens, rule.nameOnly ? name : whole, true)) {
+      const tokens = rule?.tokens[dialect];
+      if (!rule || !tokens || (rule.directoryOnly && !isDirectory)) continue;
+      if (matches(tokens, rule.nameOnly ? name : whole, true)) {
         return { ignored: !rule.negated, rule, path };
       }
     }

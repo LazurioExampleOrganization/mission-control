@@ -49,12 +49,17 @@ data checkout.
   anchoring, directory-only rules, `**`, brackets (reversed ranges included)
   and the rule that no file is re-included below an excluded directory
   behave as in Git, and where the documentation is silent, Git's observed
-  answers decide (the module's comments name them).
+  answers decide (the module's comments name them). Git versions differ in
+  one place: a `**` glued to a name, as in `a**/b`, is one `*` in Git 2.56
+  and in `gitignore(5)`, but crosses directories in Git 2.43 (Ubuntu 24.04,
+  where Lazurio Environments publish). The check reads such a rule both
+  ways and refuses evidence that either reading leaves out.
   `tests/gitignore.test.ts` is the evidence: every answer it expects comes
-  from Git while it runs (`git ls-files --others --exclude-standard`), on
-  fixed rules, rule files read line by line, every set against every byte,
-  and generated rule files and trees, on Linux and Windows in CI and over
-  thousands of generated cases locally (`MC_IGNORE_ROUNDS=<n>`). A rule file
+  from Git while it runs (`git ls-files --others --exclude-standard`), in
+  the reading of that Git, on fixed rules, rule files read line by line,
+  every set against every byte, and generated rule files and trees, on
+  Linux and Windows in CI and over thousands of generated cases locally
+  with Git 2.43 and 2.56 (`MC_IGNORE_ROUNDS=<n>`). A rule file
   that is a symbolic link or cannot be read is an issue, never a pass.
 - The check decides twice and refuses when either says no: as `git add --all`
   does in this checkout (every rule file on the path, `.git/info/exclude`
