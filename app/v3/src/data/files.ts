@@ -8,8 +8,16 @@ import {
   readdirSync,
   readFileSync,
 } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import type { MissionControlConfig } from "../domain/config.ts";
+import {
+  decide,
+  IGNORE_DIALECTS,
+  type IgnoreDecision,
+  type IgnoreDialect,
+  type IgnoreLevel,
+  parseIgnoreFile,
+} from "../domain/gitignore.ts";
 import {
   HISTORY_FREEZE_COMMAND,
   HISTORY_SCHEMA_VERSION,
@@ -75,7 +83,17 @@ export interface DataReader {
   list(path: string): DirectoryEntry[] | ReadFailure;
   /** The bytes of a regular file; null when it is gone or not a file; or why it could not be read. */
   bytes(path: string): Uint8Array | null | ReadFailure;
+  /**
+   * The checkout's own exclude file, `info/exclude` of its Git directory
+   * (`.git/`, or the common directory of a linked worktree): null when there
+   * is none. It holds ignore rules of this checkout only, which `git add
+   * --all` honours when repository-db publishes from it.
+   */
+  gitInfoExclude?(): string | null | ReadFailure;
 }
+
+/** How a check names the exclude file in messages, wherever the Git directory is. */
+export const GIT_INFO_EXCLUDE = ".git/info/exclude";
 
 const failure = (error: unknown): ReadFailure => ({
   failed: (error as NodeJS.ErrnoException)?.code ?? (error instanceof Error ? error.name : "error"),
@@ -165,6 +183,40 @@ export function directoryReader(root: string): DataReader {
       } finally {
         closeSync(fd);
       }
+    },
+    gitInfoExclude() {
+      // Git metadata, read as Git reads it: `.git` is the Git directory, or a
+      // file naming it (`gitdir: …`) for a linked worktree, whose shared files
+      // are in the directory its `commondir` names. Nothing here is data.
+      const read = (path: string): string | null | ReadFailure => {
+        try {
+          return readFileSync(path, "utf8");
+        } catch (error) {
+          const code = (error as NodeJS.ErrnoException).code;
+          return code === "ENOENT" || code === "ENOTDIR" ? null : failure(error);
+        }
+      };
+      const dotGit = join(root, ".git");
+      let stat: ReturnType<typeof lstatSync>;
+      try {
+        stat = lstatSync(dotGit);
+      } catch (error) {
+        const code = (error as NodeJS.ErrnoException).code;
+        return code === "ENOENT" ? null : failure(error);
+      }
+      let gitDir: string;
+      if (stat.isDirectory()) gitDir = dotGit;
+      else if (stat.isFile()) {
+        const pointer = read(dotGit);
+        if (pointer === null || isReadFailure(pointer)) return pointer;
+        const match = /^gitdir:\s*(.+?)\s*$/m.exec(pointer);
+        if (!match?.[1]) return null;
+        gitDir = resolve(root, match[1]);
+      } else return { failed: stat.isSymbolicLink() ? "symbolic link" : "not a directory" };
+      const commonDir = read(join(gitDir, "commondir"));
+      if (isReadFailure(commonDir)) return commonDir;
+      const common = commonDir?.trim() ? resolve(gitDir, commonDir.trim()) : gitDir;
+      return read(join(common, "info", "exclude"));
     },
   };
 }
@@ -375,23 +427,174 @@ export function checkParsedData(data: ParsedData): RuleIssue[] {
 const UNPUBLISHED = [".git", ".repository-db", "generated"];
 
 /**
+ * Git's ignore rules for paths of the checkout, read through the reader: the
+ * `.gitignore` of the root and of every directory on a path, and
+ * `.git/info/exclude`. A rule file that is a symbolic link or cannot be read
+ * is an issue, and the decision then is not trusted (the evidence is not
+ * passed silently). Rule files are read once per check.
+ */
+export class IgnoreRules {
+  private readonly files = new Map<string, IgnoreLevel | null>();
+  private exclude: IgnoreLevel | null | undefined;
+  readonly issues: RuleIssue[] = [];
+
+  constructor(private readonly reader: DataReader) {}
+
+  private report(issue: RuleIssue) {
+    if (!this.issues.some((known) => known.record === issue.record && known.code === issue.code)) {
+      this.issues.push(issue);
+    }
+  }
+
+  /** The `.gitignore` of a directory ("" for the root), or null when it has none. */
+  private level(directory: string): IgnoreLevel | null {
+    const known = this.files.get(directory);
+    if (known !== undefined) return known;
+    const path = directory === "" ? ".gitignore" : `${directory}/.gitignore`;
+    let level: IgnoreLevel | null = null;
+    const kind = this.reader.kind(path);
+    const way = wayIssue(kind);
+    if (way) this.report(way);
+    else if (kind === "file") {
+      const bytes = this.reader.bytes(path);
+      if (isReadFailure(bytes)) this.report(readFailed(path, bytes.failed));
+      else if (bytes) level = { base: directory, rules: parseIgnoreFile(bytes, path) };
+    }
+    this.files.set(directory, level);
+    return level;
+  }
+
+  private infoExclude(): IgnoreLevel | null {
+    if (this.exclude !== undefined) return this.exclude;
+    const text = this.reader.gitInfoExclude?.() ?? null;
+    if (isReadFailure(text)) {
+      this.report(readFailed(GIT_INFO_EXCLUDE, text.failed));
+      this.exclude = null;
+    } else {
+      this.exclude =
+        text === null ? null : { base: "", rules: parseIgnoreFile(text, GIT_INFO_EXCLUDE) };
+    }
+    return this.exclude;
+  }
+
+  /**
+   * Git's decision for a file, in two views, each with the rule that decides:
+   *
+   * - `local`: what `git add --all` does in this checkout, with every rule
+   *   file on the path (Git reads a `.gitignore` even when it ignores the
+   *   file itself) and `.git/info/exclude`;
+   * - `published`: what this same check decides on the checkout of the
+   *   published commit, with only the rule files that commit carries.
+   *
+   * A nested `.gitignore` that the rules leave out (`local`, or `published`
+   * above it) is not in the published commit, so it does not count there;
+   * those are listed in `unpublished`. The root `.gitignore` always counts:
+   * no shallower rule file can be cancelled by it, so leaving it out could
+   * only make the published view ignore less. `.git/info/exclude` belongs to
+   * this checkout alone and counts only in `local`; its rules come after
+   * every `.gitignore` and can only add exclusions. So a file neither view
+   * ignores is staged here and passes on the published checkout too.
+   *
+   * A path counts as left out when any of `dialects` leaves it out, the two
+   * readings of Git versions by default (`IgnoreDialect`): the check cannot
+   * know which Git publishes, so it refuses what either would leave out.
+   */
+  explain(
+    path: string,
+    dialects: readonly IgnoreDialect[] = IGNORE_DIALECTS,
+  ): {
+    local: IgnoreDecision | null;
+    published: IgnoreDecision | null;
+    unpublished: string[];
+  } {
+    const parts = path.split("/");
+    const local: IgnoreLevel[] = [];
+    const published: IgnoreLevel[] = [];
+    const unpublished: string[] = [];
+    const withExclude = (levels: IgnoreLevel[]) => {
+      const exclude = this.infoExclude();
+      return exclude ? [...levels, exclude] : levels;
+    };
+    const ignoredIn = (levels: IgnoreLevel[], target: string, isDirectory: boolean) => {
+      for (const dialect of dialects) {
+        const decision = decide(levels, target, isDirectory, dialect);
+        if (decision?.ignored) return decision;
+      }
+      return null;
+    };
+    const enter = (directory: string, publishedExcluded = false) => {
+      const level = this.level(directory);
+      if (!level) return;
+      local.unshift(level);
+      // Below a directory the published view excludes, it decides nothing more.
+      if (publishedExcluded) return;
+      const rules = directory === "" ? ".gitignore" : `${directory}/.gitignore`;
+      // A rule file applies to itself.
+      const leftOut =
+        directory !== "" &&
+        (ignoredIn(withExclude(local), rules, false) ||
+          ignoredIn([level, ...published], rules, false));
+      if (leftOut) unpublished.push(rules);
+      else published.unshift(level);
+    };
+    // The two views walk the path on their own: Git does not look into a
+    // directory its view excludes, nor read the rules there, and the other
+    // view goes on.
+    let publishedDirectory: IgnoreDecision | null = null;
+    enter("");
+    for (let index = 0; index < parts.length - 1; index += 1) {
+      const directory = parts.slice(0, index + 1).join("/");
+      const localDirectory = ignoredIn(withExclude(local), directory, true);
+      if (localDirectory) {
+        return { local: localDirectory, published: publishedDirectory, unpublished };
+      }
+      publishedDirectory ??= ignoredIn(published, directory, true);
+      enter(directory, publishedDirectory !== null);
+    }
+    return {
+      local: ignoredIn(withExclude(local), path, false),
+      published: publishedDirectory ?? ignoredIn(published, path, false),
+      unpublished,
+    };
+  }
+
+  /**
+   * Whether the file is left out in either view of `explain`: by `git add
+   * --all` here, or by this check on the published checkout. Null when
+   * neither leaves it out, or when a rule file on the way could not be read
+   * (that is an issue of its own).
+   */
+  ignoredFile(path: string): { decision: IgnoreDecision; unpublished: string[] } | null {
+    const before = this.issues.length;
+    const view = this.explain(path);
+    if (this.issues.length > before) return null;
+    const decision = view.local ?? view.published;
+    return decision ? { decision, unpublished: view.local ? [] : view.unpublished } : null;
+  }
+}
+
+/**
  * Every local evidence of the roadmaps names a file the data repository
  * publishes: it exists, is a regular file, is reached only through real
- * directories, and lies outside `UNPUBLISHED`. (That the path is portable and
- * relative is the Zod schema's rule.)
+ * directories, lies outside `UNPUBLISHED`, and Git's ignore rules do not
+ * leave it out (`.gitignore` files on its path and `.git/info/exclude`).
+ * (That the path is portable and relative is the Zod schema's rule.)
  *
- * Mission Control 3.x also required the file to be tracked or staged by Git.
+ * Mission Control 3.x required the file to be tracked or staged by Git.
  * repository-db runs the validator before it stages a publish, so evidence
  * added in the same draft is neither; and in the checkout of a pull request
- * every file present is tracked. What would not reach others is a file Git
- * ignores, and in a Mission Control data repository that is what
- * `UNPUBLISHED` names.
+ * every file present is tracked. What would not reach others is a file
+ * `git add --all` leaves out, and that is what the ignore rules decide. They
+ * are read from the checkout, not asked of Git, so the App, the validator
+ * before a publish and CI give one answer. A file once force-added despite a
+ * rule is refused too: make the rule explicit with a `!` pattern instead.
  */
 export function checkEvidence(
   reader: DataReader,
   roadmaps: readonly ParsedRecord<Roadmap>[],
 ): RuleIssue[] {
   const issues: RuleIssue[] = [];
+  const ignore = new IgnoreRules(reader);
   for (const { value } of roadmaps) {
     const record = value.roadmap_code;
     for (const step of value.steps) {
@@ -435,11 +638,34 @@ export function checkEvidence(
             params,
             message: `${step.id}: the evidence ${path} is not a file`,
           });
+        } else {
+          const ignored = ignore.ignoredFile(path);
+          if (ignored) {
+            const { decision, unpublished } = ignored;
+            const { pattern, source } = decision.rule;
+            const what = decision.path === path ? "" : ` (its directory ${decision.path})`;
+            const why =
+              unpublished.length > 0
+                ? `; ${unpublished.join(", ")}, which would let it in here, is itself left out of the commit`
+                : "";
+            issues.push({
+              record,
+              code: "evidence_ignored",
+              params: {
+                ...params,
+                pattern,
+                source,
+                ignored: decision.path,
+                ...(unpublished.length > 0 ? { unpublished: unpublished.join(", ") } : {}),
+              },
+              message: `${step.id}: the evidence ${path}${what} is left out of the published commit by the rule ${pattern} in ${source}${why}`,
+            });
+          }
         }
       }
     }
   }
-  return issues;
+  return [...issues, ...ignore.issues];
 }
 
 /** The digest of a file's content with every CRLF read as LF, as the lock records it. */

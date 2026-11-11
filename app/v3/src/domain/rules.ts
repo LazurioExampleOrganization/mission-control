@@ -42,6 +42,13 @@ export type RuleIssueCode =
   | "evidence_excluded"
   /** A step's evidence is reached through a symbolic link; `params.link`. */
   | "evidence_link"
+  /**
+   * A step's evidence is a file Git's ignore rules leave out of every commit;
+   * `params.pattern`, `params.source`, `params.ignored` (the file or the
+   * excluded directory above it), `params.unpublished` (rule files that let
+   * it in here but are not published themselves).
+   */
+  | "evidence_ignored"
   /** A file of the frozen 3.x history is not in `history.lock.json`; `params.path`. */
   | "history_added"
   /** A file of the frozen history no longer has its frozen content. */
