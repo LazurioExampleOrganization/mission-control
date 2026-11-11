@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-## 4.1.2 — proposed, not released
+## 4.1.2 — 2026-11-11
 
 Evidence that Git would leave out of every commit is refused (#24, from the
 review of the adoption of 4.1.1 into an Organization).
