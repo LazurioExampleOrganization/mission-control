@@ -1,0 +1,29 @@
+schema_version: companiesascode.mission_control.plan.v2
+id: mcplan-ex-0004
+dev_code: EX-0004
+title: Vyhodnotit druhý prodejní kanál
+status: shaping
+owner: samtaylor
+priority: low
+priority_rank: 200
+created_at: 2026-10-20
+updated_at: 2026-10-20
+context: >-
+  Pokud pilot přehledu výzkumu ukáže zájem, nabídka bude potřebovat cestu ke
+  čtenářům mimo testovací publikum.
+current_problem: >-
+  Jediným kanálem je dnes přímé pozvání, které neroste.
+target_state: >-
+  Krátké srovnání dvou kanálů s náklady, očekávaným dosahem a právními
+  mantinely každého z nich.
+scope:
+  in:
+    - Srovnání dvou kanálů
+  out:
+    - Placená reklama
+acceptance_criteria:
+  - Srovnání uvádí zdroje a datum ověření.
+validation:
+  - Zakladatel vybere kanál, nebo plán zastaví.
+open_questions:
+  - Které dva kanály má smysl srovnat?

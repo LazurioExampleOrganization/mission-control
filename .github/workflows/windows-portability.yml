@@ -1,25 +1,14 @@
 name: windows portability
 
-# The full test on Windows, where people run Mission Control on their own
-# computers. Only code can break that, so this runs only for pull requests
-# that change the App, code, the toolchain or a workflow, and on demand; a
-# change of documents or examples never starts it, and neither does the push
-# to main after a merge (the pull request already proved it). Windows minutes
-# count twice against the GitHub free tier; Linux runs for every change in
-# checks.yml.
+# The same gates on Windows, where people run Mission Control on their own
+# computers. Only code can break that, so this runs for pull requests that
+# change the App, the toolchain or a workflow, and on demand; never after a
+# merge to main (Module Standard, CI; MS-14).
 on:
   pull_request:
     paths:
       - "app/**"
-      - "src/**"
-      - "scripts/**"
-      - "test-support/**"
-      - "**/*.mjs"
-      - "**/*.cjs"
-      - "**/*.js"
-      - "**/*.ts"
-      - "**/package.json"
-      - "**/bun.lock"
+      - "templates/**"
       - ".github/workflows/**"
   workflow_dispatch:
 
@@ -32,24 +21,16 @@ permissions:
 
 jobs:
   windows:
-    name: bun run test (windows-latest)
+    name: bun run check (windows-latest)
     runs-on: windows-latest
-    timeout-minutes: 45
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: app/v3
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: 24.19.0
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
-          bun-version: 1.4.2
-      - name: Prove native Node runtime
-        shell: pwsh
-        run: |
-          node -p "JSON.stringify({executable: process.execPath, version: process.version})"
-          if (-not ((node -p "process.version") -eq "v24.19.0")) { exit 1 }
+          bun-version: 1.4.4
       - run: bun install --frozen-lockfile
-      - run: bun install --cwd app/v3 --frozen-lockfile
-      - run: bun run test:ci
+      - run: bun run check

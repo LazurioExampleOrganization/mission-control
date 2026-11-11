@@ -2,16 +2,293 @@
 
 ## Unreleased
 
-- From `main` the App runs as one production process (LazurioPlatform F58
-  addendum (2), root decision 0195 point 24): `lazurio.runtime` declares
-  `start_script: "dev"`, `build_script: "prepare:app"` (the client only,
-  formerly `build`) and `build_output: "dist"`, and the server serves its
-  client from `LAZURIO_RUNTIME_BUILD_OUTPUT` when set, otherwise from
-  `app/v3/dist`. `dev` starts Bun with `--no-env-file`. Integrate this into an
-  Organization fork only when every Environment of that Organization runs a
-  LazurioPlatform release that knows `start_script` (v0.1.11) and the Lazurio
-  root on its computers knows it too: an older release refuses the unknown
-  key and does not start the App.
+## 4.1.2 — 2026-11-11
+
+Evidence that Git would leave out of every commit is refused (#24, from the
+review of the adoption of 4.1.1 into an Organization).
+
+### For Organizations and agents
+
+- **Evidence Git ignores.** A roadmap step's local evidence must not be a
+  file that the data repository's ignore rules leave out: the `.gitignore` of
+  the root and of every directory on its path, and the checkout's
+  `.git/info/exclude` (also in a linked worktree). Before, such a file passed
+  the check, repository-db's `git add --all` left it out of the published
+  commit, and the `validate` run of the pull request or of `v3` failed later
+  on `evidence_missing`. New issue code `evidence_ignored`, worded in Czech
+  and English, naming the rule and the file it comes from.
+- The rules are read from the checkout through the check's reader (no
+  symbolic link, a rule file that cannot be read is an issue) and matched by
+  `app/v3/src/domain/gitignore.ts`, written for Mission Control from Git's
+  documented behaviour and checked against Git as a black box; it holds no
+  code from Git. `tests/gitignore.test.ts` takes every expected answer from
+  Git while it runs: fixed rules, rule files read line by line, every set
+  against every byte, generated rule files and generated trees (ranges
+  reversed and at the edges, classes, escapes, `**` everywhere, negations at
+  every depth, ignored and tracked rule files, `.git/info/exclude`). A `**`
+  glued to a name (`a**/b`), which Git 2.43 and Git 2.56 read differently,
+  is read both ways, and evidence either reading leaves out is refused.
+- The check decides as `git add --all` does here and as it will itself on
+  the published checkout, where a nested `.gitignore` that is not published
+  itself cannot let evidence in. Evidence that passes here is in the
+  published commit and passes there. Nothing asks Git, so evidence added in
+  the same draft still passes. A machine-wide `core.excludesFile` is not
+  read; names are matched case-sensitively; a force-added ignored file is
+  refused ([`docs/data.md`](docs/data.md), "Evidence and links").
+- The history lock does not change.
+
+### Adopting 4.1.2
+
+- **From 4.1.1**: merge the tag ([`docs/extending.md`](docs/extending.md)).
+  The data repository takes `scripts/mission-control-check.js` and
+  `AGENTS.md` of `templates/data-repo/` in a pull request merged right before
+  the Module's. `history.lock.json` stays as it is. Check the records first
+  with `bun run validate -- --data <checkout>`: evidence that a `.gitignore`
+  leaves out now fails.
+- **From 3.x or 4.1.0**: as for 4.1.1 (its "Adopting" section), with this
+  release's tag.
+
+## 4.1.1 — 2026-11-09
+
+The data check again holds three safeguards the Mission Control 3.x
+validator had and 4.0 dropped (#21, from the review of the first adoption
+into an Organization). As in 4.1.0, the App and the data repository's
+validator run the same check.
+
+### For Organizations and agents
+
+- **Evidence names a published file.** A roadmap step's local evidence is a
+  portable path relative to the data repository (no `../`, no absolute path,
+  nothing Windows refuses), and it names a regular file that exists with
+  exactly that name, reached only through real directories and outside
+  `.git/`, `.repository-db/` and `generated/`. The same path rule holds for
+  `links[].path`. The App refuses to save a roadmap whose evidence is
+  missing. 3.x asked for a Git-tracked or staged file; repository-db validates
+  a publish before staging it, so 4.1.1 asks for a file that will be
+  published instead ([`docs/data.md`](docs/data.md), "Evidence and links").
+- **No credential in a URL.** Evidence URLs, `links[].url`, a plan's pull
+  request URLs and legacy source URLs refuse user info, parameters named like
+  a credential (`token`, `access_token`, `api_key`, `password`, `sig`…) and
+  values shaped like a known secret, also percent-encoded or nested
+  (`app/v3/src/domain/credentials.ts`, the rules of the 3.x validator).
+- **The 3.x history is frozen.** `data/mission-control/history.lock.json`
+  names every file of the history (ledgers, changesets, import reviews,
+  reports) with the digest of its content; the check refuses a changed,
+  removed or new file there, and any other file beside the records. The
+  data repository writes the lock with `bun scripts/validate.ts
+  --freeze-history`, once in the window that moves it to 4.x and again only
+  for a deliberate change, reviewed as a change of the lock. A repository
+  without a lock has an empty history, so the empty start needs none
+  ([`docs/data.md`](docs/data.md), "The frozen 3.x history").
+- **A file the check cannot read is an issue** (`read_failed`), whether a
+  record, a record directory, the settings, a history file or directory, or
+  the lock: a check that passes has read everything it covers, and a freeze
+  refuses to write a lock while anything in the history cannot be read. The
+  App reads its records through the same reader as the validator, so its
+  data check reports the same, and it still serves the records it can read.
+- New issue codes (`evidence_missing`, `evidence_not_file`,
+  `evidence_excluded`, `evidence_link`, `history_added`, `history_changed`,
+  `history_removed`, `history_lock_invalid`, `read_failed`) and schema rules
+  (`portable_path`, `credential_url`), worded in Czech and English on the
+  data check of Draft & Publish.
+- `templates/data-repo/schemas/history.schema.json`, the shape of the lock.
+
+### Adopting 4.1.1
+
+- **From 4.1.0**: merge the tag ([`docs/extending.md`](docs/extending.md)).
+  The data repository takes `scripts/validate.ts`,
+  `scripts/mission-control-check.js`, `schemas/history.schema.json`,
+  `README.md` and `AGENTS.md` of `templates/data-repo/` in a pull request
+  merged right before the Module's. A repository that holds a 3.x history
+  freezes it in that pull request (`bun scripts/validate.ts
+  --freeze-history`, after checking the history is unchanged since `v3`).
+  Check the records first with `bun run validate -- --data <checkout>`:
+  evidence that names no file and URLs with credentials now fail.
+- **From 3.x**: the coordinated window of [`docs/data.md`](docs/data.md)
+  ("A data repository of Mission Control 3.x"), now with the freeze in the
+  data repository's control-plane pull request.
+
+## 4.1.0 — 2026-11-08
+
+Mission Control speaks Czech and English and says what it is for, and the
+data repository now enforces exactly what the App enforces. This release
+carries the fixes from the first adoption of 4.0.0 into an Organization; an
+Organization still on 3.x takes 4.1.0 directly.
+
+### For people
+
+- **What Mission Control is for**, at the top of the overview, in an empty
+  Organization and a busy one alike: plans with a goal and acceptance
+  criteria, roadmaps over time, who works on what, and Draft & Publish. An
+  empty Organization is told how to start (its first plan here or from an
+  agent in Chat).
+- **Czech and English.** Every screen, message and data issue in both
+  languages, one language per screen; dates and periods in the page's
+  language (`6. 11. 2026`, `6 Nov 2026`). Czech is the default.
+- **Who works on what**: a plan's proposed tasks show their assignee, and a
+  roadmap shows the agents doing its work, its reviewers and its escalation.
+- **The plan editor keeps what you type**: a space at the end of a list item
+  and a new line for the next item are no longer removed while typing; the
+  text becomes items when the plan is saved.
+- **The draft review names only real changes**: a field whose value did not
+  change is no longer listed because the engine wrote its keys in another
+  order on the first edit of an older record (#18). Changed lists read
+  "1 položka", "3 položky", "5 položek".
+
+### For Organizations and agents
+
+- **The language** comes from Lazurio: the `locale` of the shell document
+  `/.lazurio/shell.json` on the App's origin, else the language the server
+  was started with (`bun run dev:demo -- --locale en`), else Czech. Lazurio
+  does not yet relay that document on a Module's origin
+  ([LazurioPlatform#909](https://github.com/Lazurio/LazurioPlatform/issues/909)),
+  so a hosted Module shows Czech until it does; the App's server answers 404
+  for `/.lazurio/*` so the client never waits for its own page. Texts live in
+  `app/v3/src/i18n/messages.ts`; API refusals and data issues carry stable
+  codes (`RuleIssue.code`, `params`) with English messages for agents.
+- **Draft & Publish card** in both languages: Mission Control renders
+  repository-db's `deriveDraftPanel` itself, so the engine still decides the
+  state, the actions and what can be returned; its Czech equals the shared
+  card's (`tests/draft-card.test.ts`). `GET /api/draft?locale=cs|en` words the
+  changed records. The shared card returns once repository-db speaks English
+  ([repository-db#40](https://github.com/Lazurio/repository-db/issues/40)).
+- **One check of the data everywhere** (`app/v3/src/data/files.ts`): the
+  App's data check, `bun run validate` and the data repository's validator
+  run the same Zod schemas with their refinements, the same rules across
+  records and the same YAML parser. The data repository gets it as a
+  generated, dependency-free bundle,
+  `templates/data-repo/scripts/mission-control-check.js`, which
+  `bun run schema:export` builds and `bun run check` keeps current. A done
+  roadmap step without evidence, an executable step without a plan, task or
+  issue, or a step naming an unknown plan no longer passes a data pull
+  request that the App then refuses or skips.
+- **No symbolic links**: the check refuses a link in any component of a path
+  (the data directories, a record, the settings, the bundle) and reads
+  nothing behind it.
+- **`bun run validate -- --data <dir>`** checks any directory laid out like a
+  data repository, such as a worktree of a data pull request, without the
+  data checkout's branch check (#17).
+- **Example data in both languages**: `templates/sample-data/cs/` and
+  `templates/sample-data/en/`, the same records with assignees and a roadmap
+  lane; `dev:demo` serves one by `--locale`. Marketplace screenshots per
+  language in `docs/screenshots/cs/` and `docs/screenshots/en/`.
+- **Adoption**: the tag check compares the peeled commit
+  (`git ls-remote … "refs/tags/<tag>^{}"`); the data pull request is checked
+  with the data repository's own validator (#17); the sample start takes the
+  person's language.
+
+### Adopting 4.1.0
+
+- **From 4.0.0**: merge the tag ([`docs/extending.md`](docs/extending.md)).
+  The data repository takes the new `scripts/validate.ts`,
+  `scripts/mission-control-check.js`, `.gitattributes` and `README.md` and
+  `AGENTS.md` of `templates/data-repo/` in a pull request merged right before
+  the Module's. Records do not change. `templates/sample-data/data/` moved to
+  `templates/sample-data/en/data/`.
+- **From 3.x**: one short, coordinated window, described in
+  [`docs/data.md`](docs/data.md) ("A data repository of Mission Control
+  3.x"): the data repository's new control plane (validator and check
+  bundle, schemas, `repository-db.yaml`, workflow), the renamed required
+  check of the Module (`bun run test (ubuntu-latest)` → `bun run check
+  (ubuntu-latest)`) and the data repository's required check `validate` in
+  the Organization's ruleset, and the Module's merge, right after each other.
+  The 3.x validator cannot stay: 4.x publishes through repository-db, which
+  runs it, and it needs packages a data checkout does not have (#16).
+
+## 4.0.0 — 2026-11-03
+
+Mission Control becomes the first template of the Lazurio Marketplace: the
+App is rebuilt on the stack profile `app-data@2026.11` and on the
+repository-db engine, and the repository carries what an Organization needs to
+adopt it. The release is a draft until it is tagged on the publisher's
+instruction.
+
+### For people
+
+- Overview with plans by state, the main roadmap, its next steps and the
+  plans under way; roadmaps with priorities and steps grouped by period; plans
+  with every section, the roadmaps they are on, an edit form and a form for a
+  new plan with the next code of the Organization's prefix.
+- Draft & Publish is the shared card of repository-db: the changed records in
+  business language (changed fields named in Czech), publish all, return one
+  record or all, finish a send, take colleagues' work. A data check lists any
+  record that breaks a schema or a rule.
+
+### For Organizations and agents
+
+- **Data through the engine.** The App reads and writes its data only through
+  `@lazurio/repository-db` v3.2.6 (sync host, `writeRecordDraft` with base
+  revisions, review adapter). The own Git pull and publish flow
+  (`src/mission-control-pull.mjs`, `src/mission-control-publish-flow.mjs`,
+  local changesets, writer audit) is removed, and with it the `.mjs` sources
+  outside `app/` that broke MS-08 and MS-09.
+- **A storage port.** `app/v3/src/data/store.ts` is the only way the server
+  reaches data; `tests/store-contract.ts` is its shared test suite, passed by
+  the repository-db store and a memory store, and later by a Dolt store (v4).
+- **Zod is the only definition of the data.** Plan, roadmap and settings
+  schemas live in `app/v3/src/domain/`; the hand-written types and the
+  hand-written JSON Schemas are gone. The JSON Schemas of the data repository
+  are generated (`bun run schema:export`) and checked for staleness.
+- **Existing data repositories are read unchanged**: the same layout under
+  `data/mission-control/` and the same record versions (`plan.v2`,
+  `roadmap.v1`). Task ledgers, issue ledgers and changesets are no longer read.
+- **Data repository template** (`templates/data-repo/`) with a
+  dependency-free validator (`bun scripts/validate.ts`) over the generated
+  schemas, and fictional example records (`templates/sample-data/`).
+- **One gate:** `bun run check` runs the type check, Biome, the schema
+  staleness check, the seed validation and the tests; CI runs it with
+  `bun run build`.
+- **Stack:** Bun 1.4.4, TypeScript 7.0.2, Vite 8.3.5, React 19.3.1,
+  Biome 2.6.4 (spaces, width 100, reformatted once), Zod 4.6.7,
+  `@lazurio/module-kit` v0.2.0; every version exact. `ajv` and `yaml` are no
+  longer dependencies of the App.
+- **Module Standard:** one App package (`app/v3`), no package at the Module
+  root; `dev` and `start` run one Bun server (a development run bundles the
+  client itself, a production run serves `LAZURIO_RUNTIME_BUILD_OUTPUT` or
+  `dist/`); health is `/healthz`; the preparation installs nothing and builds
+  nothing; writes are accepted only as JSON from the App's own origin.
+- `bun run dev:demo` serves the fictional example records from memory.
+- Documents: `docs/adoption.md`, `docs/extending.md`, `docs/data.md`, and
+  Marketplace screenshots in `docs/screenshots/`.
+- **License:** still MIT; the copyright holder in `LICENSE` is now "Lazurio
+  contributors" (formerly "MissionControlTemplate contributors").
+- **Source:** the repository moved from `Lazurio/mission-control` to
+  `LazurioTemplates/mission-control`, the publisher of the Lazurio Marketplace
+  templates. GitHub redirects the old path for Git and the web, and the tags
+  v3.0.0 to v3.1.0 and their Releases moved with it; a 3.x fork should still
+  point its `upstream` remote to the new path.
+
+### Removed
+
+Agent work, proposals, the work board and planning coverage pages, TODO
+export, plan code reservations, issue resolution, the Doctor-managed install
+contract, the root `package.json`, `templates/organization-data/` and
+`templates/launchpad-app/`. They depended on the removed publish flow or on
+task ledgers outside the record model; each can return as a feature of the
+storage port.
+
+### Adopting 4.0.0 from 3.x
+
+*Corrected in 4.1.0:* replacing the data repository's validator is not
+optional and cannot follow later. 4.0.0 publishes through repository-db,
+which runs the 3.x validator and is refused, and the App's required CI check
+was renamed. Take 4.1.0 instead, in the coordinated window of
+[`docs/data.md`](docs/data.md) ("A data repository of Mission Control 3.x").
+
+An Organization that runs a 3.x fork takes 4.0.0 by merging its tag
+([`docs/extending.md`](docs/extending.md)). Its data repository needs no
+migration of its records. Pending local changesets of the old publish flow
+must be published or dropped before the merge: 4.0.0 does not read them.
+
+Before the merge, check that every Environment of the Organization runs a
+LazurioPlatform release that knows `start_script` and `build_output` (v0.1.11
+or newer): an older release refuses the unknown keys and does not start the
+App. The Organization's identity (`lazurio.module.json`, the `lazurio.runtime`
+ids, `app/v3/config/data-repository.json`, `app/v3/src/instance/`, its
+`AGENTS.md` section) stays its own while the rest takes the template's side.
+After the merge, `app/v3` is the only App package; the root `package.json`,
+`bun.lock`, `config/`, `schemas/`, `src/`, `scripts/`, `test-support/` and
+`mission-control/` of 3.x are gone.
 
 ## 3.1.0 — 2026-11-01
 

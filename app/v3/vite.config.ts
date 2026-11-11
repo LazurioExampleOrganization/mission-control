@@ -1,28 +1,13 @@
-import { existsSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import react from '@vitejs/plugin-react';
-import { defineConfig } from 'vite';
+import react from "@vitejs/plugin-react";
+import { defineConfig } from "vite";
 
-const LOCAL_NODE_MODULES = new URL('./node_modules/', import.meta.url);
-const ROOT_NODE_MODULES = new URL('../../node_modules/', import.meta.url);
-
-function nodeModulePath(modulePath: string): string {
-	const localPath = fileURLToPath(new URL(modulePath, LOCAL_NODE_MODULES));
-	if (existsSync(localPath)) return localPath;
-	return fileURLToPath(new URL(modulePath, ROOT_NODE_MODULES));
-}
-
+// Vite builds the client of the built version (`bun run build` → dist/). A
+// development run does not use Vite: the Bun server bundles the client itself
+// (src/server/main.ts), so the App stays one process (Module Standard).
 export default defineConfig({
-	plugins: [react()],
-	resolve: {
-		alias: {
-			react: nodeModulePath('react'),
-			'react/jsx-runtime': nodeModulePath('react/jsx-runtime.js'),
-			'react-dom': nodeModulePath('react-dom'),
-		},
-		dedupe: ['react', 'react-dom'],
-	},
-	optimizeDeps: {
-		include: ['react', 'react/jsx-runtime', 'react-dom', 'yaml'],
-	},
+  root: "src/ui",
+  plugins: [react()],
+  // No .env* files anywhere (Module Standard, MS-07).
+  envDir: false,
+  build: { outDir: "../../dist", emptyOutDir: true },
 });
