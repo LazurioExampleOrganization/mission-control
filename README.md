@@ -138,7 +138,7 @@ This is the Mission Control of
 [Lazurio Example Organization](https://github.com/LazurioExampleOrganization),
 taken from the Lazurio Marketplace template
 [`LazurioTemplates/mission-control`](https://github.com/LazurioTemplates/mission-control)
-at v4.1.1 (`fe5000722a308e6aa0f6786f1b93e4d508556038`). Its data is the
+at v4.1.2 (`42141bbd3d59f05e1de950530f68119eecd6736e`). Its data is the
 fictional plans and roadmaps of
 [`LazurioExampleOrganization/mission-control-data`](https://github.com/LazurioExampleOrganization/mission-control-data)
 (branch `v3`). How this copy is reviewed and what it keeps of its own is in

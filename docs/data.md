@@ -37,14 +37,58 @@ data checkout.
   holds for the `path` of a plan's or roadmap's `links`.
 - The evidence names a file the data repository publishes: it exists with
   exactly that name (letter case counts, as on the Linux runner of a pull
-  request), it is a regular file reached only through real directories, and
-  it does not lie in `.git/`, `.repository-db/` or `generated/`, which never
-  reach a commit. Mission Control 3.x asked for a Git-tracked or staged file
-  instead; repository-db validates a publish before it stages the draft, so
-  evidence added in the same draft would have been refused, and in a pull
-  request's checkout every file present is tracked anyway. A file an
-  Organization's own `.gitignore` leaves out is not detected here; the
-  `validate` run after the push to `v3` then misses it and fails.
+  request), it is a regular file reached only through real directories, it
+  does not lie in `.git/`, `.repository-db/` or `generated/`, and Git's
+  ignore rules do not leave it out of a commit (`evidence_ignored`). Those
+  rules are the `.gitignore` of the root and of every directory on the
+  evidence's path and the checkout's `.git/info/exclude` (in a linked
+  worktree, the one of its common Git directory). They are matched by
+  `app/v3/src/domain/gitignore.ts`, which was written for Mission Control
+  from Git's documented behaviour (`gitignore(5)`) and checked against Git
+  as a black box; it holds no code from Git. Negation, precedence,
+  anchoring, directory-only rules, `**`, brackets (reversed ranges included)
+  and the rule that no file is re-included below an excluded directory
+  behave as in Git, and where the documentation is silent, Git's observed
+  answers decide (the module's comments name them). Git versions differ in
+  one place: a `**` glued to a name, as in `a**/b`, is one `*` in Git 2.56
+  and in `gitignore(5)`, but crosses directories in Git 2.43 (Ubuntu 24.04,
+  where Lazurio Environments publish). The check reads such a rule both
+  ways and refuses evidence that either reading leaves out.
+  `tests/gitignore.test.ts` is the evidence: every answer it expects comes
+  from Git while it runs (`git ls-files --others --exclude-standard`), in
+  the reading of that Git, on fixed rules, rule files read line by line,
+  every set against every byte, and generated rule files and trees, on
+  Linux and Windows in CI and over thousands of generated cases locally
+  with Git 2.43 and 2.56 (`MC_IGNORE_ROUNDS=<n>`). A rule file
+  that is a symbolic link or cannot be read is an issue, never a pass.
+- The check decides twice and refuses when either says no: as `git add --all`
+  does in this checkout (every rule file on the path, `.git/info/exclude`
+  included), and as the check itself will on the checkout of the published
+  commit. There only the rule files that commit carries count: a nested
+  `.gitignore` that the rules leave out, so that `git add --all` does not
+  publish it, cannot let evidence in (the issue names it). The root
+  `.gitignore` always counts, and `.git/info/exclude` only here; neither can
+  make the published checkout stricter than this one. So evidence that passes
+  here is in the published commit and passes there too, which the generated
+  trees of the test check by publishing and cloning each one.
+- Mission Control 3.x asked for a Git-tracked or staged file instead.
+  repository-db validates a publish before it stages the draft with `git add
+  --all`, so evidence added in the same draft is neither, and in a pull
+  request's checkout every file present is tracked anyway. What does not
+  reach a commit is what the ignore rules leave out, so the check reads them
+  from the checkout and asks nothing of Git: the App, the validator before a
+  publish and CI give one answer. `git check-ignore` is not used: it would
+  answer only the first of the two questions (it reads an unpublished nested
+  rule file like any other), it needs a Git repository (the seeds and
+  `bun run validate -- --data` read plain directories), and the App does not
+  run Git on its data checkout. Two consequences: a file or a nested rule file
+  once force-added despite a rule counts as left out (re-include it with a
+  `!` rule instead), and names are matched case-sensitively, as Git does on
+  Linux, where Lazurio Environments and CI publish and check. A machine-wide exclude file
+  (`core.excludesFile`) belongs to one person's computer, not to the data
+  repository, and is not read.
+- Keep new evidence outside `data/mission-control/` (for example in
+  `evidence/`): every file there beside the records is the frozen history.
 - No URL in a record carries a credential (`app/v3/src/domain/credentials.ts`):
   no user info, no parameter named like a credential (`token`,
   `access_token`, `api_key`, `password`, `secret`, `sig`…), no value shaped

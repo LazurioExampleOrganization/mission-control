@@ -2,6 +2,52 @@
 
 ## Unreleased
 
+## 4.1.2 — 2026-11-11
+
+Evidence that Git would leave out of every commit is refused (#24, from the
+review of the adoption of 4.1.1 into an Organization).
+
+### For Organizations and agents
+
+- **Evidence Git ignores.** A roadmap step's local evidence must not be a
+  file that the data repository's ignore rules leave out: the `.gitignore` of
+  the root and of every directory on its path, and the checkout's
+  `.git/info/exclude` (also in a linked worktree). Before, such a file passed
+  the check, repository-db's `git add --all` left it out of the published
+  commit, and the `validate` run of the pull request or of `v3` failed later
+  on `evidence_missing`. New issue code `evidence_ignored`, worded in Czech
+  and English, naming the rule and the file it comes from.
+- The rules are read from the checkout through the check's reader (no
+  symbolic link, a rule file that cannot be read is an issue) and matched by
+  `app/v3/src/domain/gitignore.ts`, written for Mission Control from Git's
+  documented behaviour and checked against Git as a black box; it holds no
+  code from Git. `tests/gitignore.test.ts` takes every expected answer from
+  Git while it runs: fixed rules, rule files read line by line, every set
+  against every byte, generated rule files and generated trees (ranges
+  reversed and at the edges, classes, escapes, `**` everywhere, negations at
+  every depth, ignored and tracked rule files, `.git/info/exclude`). A `**`
+  glued to a name (`a**/b`), which Git 2.43 and Git 2.56 read differently,
+  is read both ways, and evidence either reading leaves out is refused.
+- The check decides as `git add --all` does here and as it will itself on
+  the published checkout, where a nested `.gitignore` that is not published
+  itself cannot let evidence in. Evidence that passes here is in the
+  published commit and passes there. Nothing asks Git, so evidence added in
+  the same draft still passes. A machine-wide `core.excludesFile` is not
+  read; names are matched case-sensitively; a force-added ignored file is
+  refused ([`docs/data.md`](docs/data.md), "Evidence and links").
+- The history lock does not change.
+
+### Adopting 4.1.2
+
+- **From 4.1.1**: merge the tag ([`docs/extending.md`](docs/extending.md)).
+  The data repository takes `scripts/mission-control-check.js` and
+  `AGENTS.md` of `templates/data-repo/` in a pull request merged right before
+  the Module's. `history.lock.json` stays as it is. Check the records first
+  with `bun run validate -- --data <checkout>`: evidence that a `.gitignore`
+  leaves out now fails.
+- **From 3.x or 4.1.0**: as for 4.1.1 (its "Adopting" section), with this
+  release's tag.
+
 ## 4.1.1 — 2026-11-09
 
 The data check again holds three safeguards the Mission Control 3.x
