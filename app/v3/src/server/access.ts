@@ -12,6 +12,8 @@ export interface RequestAccess {
   admitted: boolean;
   /** The request may change data now, by the one writer rule. */
   mayWrite: boolean;
+  /** The person's subject, recorded with every change; null without one (a local entry). */
+  subject: string | null;
 }
 
 /**
@@ -32,6 +34,7 @@ export function accessOf(request: Request, env: Env = process.env): RequestAcces
   return {
     admitted: access.appRole !== null,
     mayWrite: copyWrites(env) && dataWriter(access, env),
+    subject: access.person?.subject ?? null,
   };
 }
 

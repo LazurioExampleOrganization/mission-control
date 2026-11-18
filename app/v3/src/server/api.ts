@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { channelOf, withOrigin } from "../data/origin.ts";
 import { type MissionControlStore, readOnly, StoreError } from "../data/store.ts";
 import { priority, status } from "../domain/common.ts";
 import {
@@ -18,7 +19,7 @@ export interface ApiOptions {
   /** Origins a writing request may come from (the App's own, loopback and hosted). */
   allowedOrigins: ReadonlySet<string>;
   /** Who came and whether they may write now; `accessOf` of `access.ts` in the App. */
-  access: (request: Request) => { admitted: boolean; mayWrite: boolean };
+  access: (request: Request) => { admitted: boolean; mayWrite: boolean; subject?: string | null };
   /** Today's date for new records; injectable for tests. */
   today?: () => string;
   /**
@@ -129,6 +130,9 @@ function writeRefusal(req: Request, allowedOrigins: ReadonlySet<string>): Respon
   }
   return null;
 }
+
+/** The header in which a caller states the channel of its changes. */
+export const CHANNEL_HEADER = "x-lazurio-channel";
 
 export function createApi(store: MissionControlStore, options: ApiOptions) {
   const today = options.today ?? (() => new Date().toISOString().slice(0, 10));
@@ -306,7 +310,14 @@ export function createApi(store: MissionControlStore, options: ApiOptions) {
         409,
       );
     try {
-      return await route(req, url, access.mayWrite, access.mayWrite ? store : readOnly(store));
+      // Who made the change and by which channel (Module Standard, One data
+      // port): the channel as the caller states it in its header (the
+      // interface states `ui`); a request that states none is unknown, never
+      // guessed. The statement is the caller's, not a proof.
+      const channel = channelOf(req.headers.get(CHANNEL_HEADER));
+      return await withOrigin({ subject: access.subject ?? null, channel }, () =>
+        route(req, url, access.mayWrite, access.mayWrite ? store : readOnly(store)),
+      );
     } catch (error) {
       return errorResponse(error);
     }

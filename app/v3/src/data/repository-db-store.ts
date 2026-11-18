@@ -30,6 +30,7 @@ import {
   parseDataFiles,
   ruleInputOf,
 } from "./files.ts";
+import { attribution } from "./origin.ts";
 import { assertRulesFor, parsePlan, parseRoadmap, recordFileName } from "./records.ts";
 import { reviewAdapter } from "./review-adapter.ts";
 import type {
@@ -238,13 +239,21 @@ export function createRepositoryDbStore(options: RepositoryDbStoreOptions): Miss
     path: string,
     value: T,
     baseRevision: Revision | null,
+    origin: ReturnType<typeof attribution>,
   ): Revision {
     const text = toStableYaml(value);
     const absolute = assertDataPath(mountRoot, path);
     writeRecordDraft(mountRoot, absolute, { baseRevision }, () => {
       writeFileAtomic(assertDataPath(mountRoot, path), text);
+      // Where the change came from: a hint that informs and never gates,
+      // recorded still under the draft write gate so a later writer's hint
+      // follows; a failure to record it never fails the saved write.
+      try {
+        db.recordOrigin([path], origin);
+      } catch {
+        // The record is saved; only its origin hint is missing.
+      }
     });
-    db.recordOrigin([path], { kind: "app", source: SOURCE });
     return recordRevisionFromBytes(Buffer.from(text, "utf8"));
   }
 
@@ -257,6 +266,8 @@ export function createRepositoryDbStore(options: RepositoryDbStoreOptions): Miss
     replace: (data: Snapshot, path: string) => void,
     files: (path: string) => RuleIssue[] = () => [],
   ): Promise<Stored<T>> {
+    // The origin of the request, taken before the write waits in the queue.
+    const origin = attribution(SOURCE);
     return engine(() =>
       host.run(`save-${kind}`, (db) => {
         const data = snapshot(db);
@@ -282,7 +293,7 @@ export function createRepositoryDbStore(options: RepositoryDbStoreOptions): Miss
             refused,
           );
         }
-        const revision = writeRecord(db, path, value, baseRevision);
+        const revision = writeRecord(db, path, value, baseRevision, origin);
         return { value, revision };
       }),
     );
@@ -412,12 +423,16 @@ export function createRepositoryDbStore(options: RepositoryDbStoreOptions): Miss
       );
     },
     async publish({ expectedRevision, actor, summary }) {
+      // Who published and by which channel; a caller without a subject leaves
+      // the actor to the engine (the Environment's Git identity).
+      const by = attribution(SOURCE);
+      const publisher = actor ?? by.actor;
       await engine(() =>
         host.run("publish", (db) =>
           db.publish({
             expectedRevision,
-            source: SOURCE,
-            ...(actor ? { actor } : {}),
+            source: by.source,
+            ...(publisher ? { actor: publisher } : {}),
             ...(summary ? { summary } : {}),
           }),
         ),

@@ -130,7 +130,7 @@ describe("a runtime stating production never writes without the writer", () => {
       headers: { "content-type": "application/json", origin: TEST_ORIGIN },
       body: "{}",
     });
-    expect(accessOf(request, env)).toEqual({ admitted: true, mayWrite: false });
+    expect(accessOf(request, env)).toEqual({ admitted: true, mayWrite: false, subject: null });
     const response = await api(env)(request);
     expect(response.status).toBe(409);
     expect((await response.json()).code).toBe("data_read_only");
@@ -157,7 +157,7 @@ describe("who came", () => {
   test("a local entry in a development version is admitted and writes", () => {
     const env = localEnvironment("web");
     const access = accessOf(new Request("http://127.0.0.1:43100/api/plans"), env);
-    expect(access).toEqual({ admitted: true, mayWrite: true });
+    expect(access).toEqual({ admitted: true, mayWrite: true, subject: null });
   });
 });
 

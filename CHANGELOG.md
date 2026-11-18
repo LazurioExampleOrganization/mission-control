@@ -13,6 +13,14 @@ Standard `MS-19`), on the stack profile `app-data@2026.12`.
 
 ### For whoever runs it
 
+- Every change records who made it and by which channel (Module Standard, One
+  data port): the person's subject and the channel the caller states in the
+  `x-lazurio-channel` header (the interface states `ui`). A draft records them through
+  repository-db's `recordOrigin`, a publication as `Repository-Db-Actor` and
+  `Repository-Db-Source: mission-control-v3/ui`. A caller without a subject
+  records none, and a request that states no channel is `unknown`, source
+  `mission-control-v3`, never guessed. The origin is a hint recorded under the draft write
+  gate: a failure to record it never fails a saved write.
 - `@lazurio/module-kit` v0.4.0 (profile release `2026.12`).
 - Who came, through `appAccess` on every API request: no application role gets
   `403 forbidden`. An Application User and an Application Admin have the same
