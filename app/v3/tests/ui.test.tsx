@@ -12,6 +12,7 @@ import { RoadmapDetailPage } from "../src/ui/pages/RoadmapDetailPage.tsx";
 import { RoadmapListPage } from "../src/ui/pages/RoadmapListPage.tsx";
 import { listsOf, planFromForm } from "../src/ui/plan-form.ts";
 import { href, parseRoute } from "../src/ui/routes.ts";
+import { WriteContext } from "../src/ui/write.tsx";
 import { sampleData } from "./support/seed.ts";
 
 const dataFor = (locale: Locale): MissionData => {
@@ -182,4 +183,32 @@ describe("the plan form", () => {
     expect("open_questions" in saved).toBe(false);
     expect(saved.risk_notes).toEqual(plan.risk_notes);
   });
+});
+
+describe("the one writer rule on the page", () => {
+  const data = dataFor("en");
+  const as = (canWrite: boolean | null, node: ReactNode) =>
+    render("en", <WriteContext.Provider value={canWrite}>{node}</WriteContext.Provider>);
+
+  test("a copy that writes offers a new plan and editing", () => {
+    expect(as(true, <OverviewPage data={data} />)).toContain('href="#/plans/new"');
+    expect(as(true, <PlanDetailPage data={data} code="EX-0002" />)).toContain(
+      'href="#/plans/EX-0002/edit"',
+    );
+  });
+
+  for (const canWrite of [false, null]) {
+    test(`a copy ${canWrite === false ? "that may not write" : "not yet known to write"} offers no change`, () => {
+      for (const node of [
+        <OverviewPage key="o" data={data} />,
+        <OverviewPage key="e" data={{ ...data, plans: [], roadmaps: [] }} />,
+        <PlanListPage key="l" data={{ ...data, plans: [] }} status={null} />,
+        <PlanDetailPage key="p" data={data} code="EX-0002" />,
+      ]) {
+        const html = as(canWrite, node);
+        expect(html).not.toContain("#/plans/new");
+        expect(html).not.toContain("/edit");
+      }
+    });
+  }
 });

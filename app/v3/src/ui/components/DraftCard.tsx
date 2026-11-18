@@ -4,6 +4,7 @@ import { errorText } from "../../i18n/messages.ts";
 import { ApiError, api } from "../api.ts";
 import { type WordedRecord, wordDraftCard } from "../draft-wording.ts";
 import { useI18n } from "../i18n.tsx";
+import { useCanWrite } from "../write.tsx";
 
 /**
  * The Draft & Publish card. It behaves as repository-db's shared
@@ -22,6 +23,7 @@ export function DraftCard({
 }) {
   const { locale, messages } = useI18n();
   const words = messages.draft;
+  const canWrite = useCanWrite();
   const [input, setInput] = useState<DraftPanelInput | null>(null);
   const [open, setOpen] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -143,7 +145,7 @@ export function DraftCard({
             </ul>
           ) : null}
 
-          {card.actions.length > 0 ? (
+          {canWrite && card.actions.length > 0 ? (
             <div className="rdb-draft-actions">
               {card.actions.map((action) => (
                 <span key={action.kind} className="rdb-draft-action">
@@ -179,6 +181,7 @@ function RecordRow({
 }) {
   const { messages } = useI18n();
   const words = messages.draft;
+  const canWrite = useCanWrite();
   const { record } = worded;
   const [technical, setTechnical] = useState(false);
   return (
@@ -212,7 +215,7 @@ function RecordRow({
             {words.open}
           </a>
         ) : null}
-        {record.revertSupported ? (
+        {!canWrite ? null : record.revertSupported ? (
           <button
             type="button"
             className="rdb-draft-revert"

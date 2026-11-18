@@ -571,6 +571,11 @@ textarea {
   color: var(--lz-danger, #a61e19);
 }
 
+.notice-read-only {
+  border: 1px solid var(--lz-warning, #876612);
+  background: var(--lz-warning-bg, #f9f7f3);
+}
+
 .issues li {
   padding: 0.3rem 0;
 }

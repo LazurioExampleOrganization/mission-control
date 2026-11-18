@@ -35,10 +35,11 @@ async function request<T>(path: string, init?: { method: string; body: unknown }
       init
         ? {
             method: init.method,
-            headers: { "content-type": "application/json" },
+            // The interface states its channel, so its changes are recorded as `ui`.
+            headers: { "content-type": "application/json", "x-lazurio-channel": "ui" },
             body: JSON.stringify(init.body),
           }
-        : { headers: { accept: "application/json" } },
+        : { headers: { accept: "application/json", "x-lazurio-channel": "ui" } },
     );
   } catch (error) {
     throw new ApiError("unreachable", error instanceof Error ? error.message : String(error));
@@ -69,6 +70,8 @@ export interface NewPlanInput {
 }
 
 export const api = {
+  /** Whether this copy lets the person change data now (the one writer rule). */
+  status: () => request<{ mayWrite: boolean }>("/api/status"),
   config: () => request<MissionControlConfig>("/api/config"),
   plans: () => request<Stored<Plan>[]>("/api/plans"),
   plan: (code: string) => request<Stored<Plan>>(`/api/plans/${encodeURIComponent(code)}`),

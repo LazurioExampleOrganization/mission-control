@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { type MissionControlStore, StoreError } from "../data/store.ts";
+import { channelOf, withOrigin } from "../data/origin.ts";
+import { type MissionControlStore, readOnly, StoreError } from "../data/store.ts";
 import { priority, status } from "../domain/common.ts";
 import {
   defaultPriorityRank,
@@ -17,6 +18,8 @@ import { type Locale, localeOr } from "../i18n/locale.ts";
 export interface ApiOptions {
   /** Origins a writing request may come from (the App's own, loopback and hosted). */
   allowedOrigins: ReadonlySet<string>;
+  /** Who came and whether they may write now; `accessOf` of `access.ts` in the App. */
+  access: (request: Request) => { admitted: boolean; mayWrite: boolean; subject?: string | null };
   /** Today's date for new records; injectable for tests. */
   today?: () => string;
   /**
@@ -128,12 +131,15 @@ function writeRefusal(req: Request, allowedOrigins: ReadonlySet<string>): Respon
   return null;
 }
 
+/** The header in which a caller states the channel of its changes. */
+export const CHANNEL_HEADER = "x-lazurio-channel";
+
 export function createApi(store: MissionControlStore, options: ApiOptions) {
   const today = options.today ?? (() => new Date().toISOString().slice(0, 10));
 
-  async function createPlan(req: Request): Promise<Response> {
+  async function createPlan(port: MissionControlStore, req: Request): Promise<Response> {
     const input = await body(req, newPlanInput);
-    const [config, plans] = await Promise.all([store.config(), store.listPlans()]);
+    const [config, plans] = await Promise.all([port.config(), port.listPlans()]);
     const code = nextPlanCode(
       config.plan_prefix,
       plans.map((entry) => entry.value.dev_code),
@@ -157,28 +163,36 @@ export function createApi(store: MissionControlStore, options: ApiOptions) {
       acceptance_criteria: input.acceptance_criteria,
       validation: input.validation,
     };
-    return json(await store.savePlan(value, null), 201);
+    return json(await port.savePlan(value, null), 201);
   }
 
-  async function savePlan(code: string, req: Request): Promise<Response> {
+  async function savePlan(
+    port: MissionControlStore,
+    code: string,
+    req: Request,
+  ): Promise<Response> {
     const input = await body(req, saveInput);
     const record = input.record as Partial<Plan> | null;
     if (!record || typeof record !== "object" || record.dev_code !== code) {
       throw new StoreError("bad_request", `The record is not the plan ${code}.`);
     }
     return json(
-      await store.savePlan({ ...(record as Plan), updated_at: today() }, input.baseRevision),
+      await port.savePlan({ ...(record as Plan), updated_at: today() }, input.baseRevision),
     );
   }
 
-  async function saveRoadmap(code: string, req: Request): Promise<Response> {
+  async function saveRoadmap(
+    port: MissionControlStore,
+    code: string,
+    req: Request,
+  ): Promise<Response> {
     const input = await body(req, saveInput);
     const record = input.record as { roadmap_code?: unknown } | null;
     if (!record || typeof record !== "object" || record.roadmap_code !== code) {
       throw new StoreError("bad_request", `The record is not the roadmap ${code}.`);
     }
     return json(
-      await store.saveRoadmap(
+      await port.saveRoadmap(
         { ...(record as Parameters<MissionControlStore["saveRoadmap"]>[0]), updated_at: today() },
         input.baseRevision,
       ),
@@ -216,7 +230,16 @@ export function createApi(store: MissionControlStore, options: ApiOptions) {
     });
   }
 
-  async function route(req: Request, url: URL): Promise<Response> {
+  /**
+   * One request. `port` is the store as this request may use it: read-only
+   * when the request may not write, so a change is refused at the port too.
+   */
+  async function route(
+    req: Request,
+    url: URL,
+    mayWrite: boolean,
+    port: MissionControlStore,
+  ): Promise<Response> {
     const { pathname } = url;
     const method = req.method;
     const plan = /^\/api\/plans\/([^/]+)$/.exec(pathname);
@@ -224,43 +247,45 @@ export function createApi(store: MissionControlStore, options: ApiOptions) {
     const code = decodeURIComponent((plan ?? roadmapMatch)?.[1] ?? "");
 
     if (pathname === "/api/status" && method === "GET") {
-      return json({ ...(await store.available()), locale: options.locale ?? null });
+      // The one writer rule for this request (Module Standard): the page
+      // offers changes only while `mayWrite` is true.
+      return json({ ...(await port.available()), locale: options.locale ?? null, mayWrite });
     }
-    if (pathname === "/api/config" && method === "GET") return json(await store.config());
-    if (pathname === "/api/plans" && method === "GET") return json(await store.listPlans());
-    if (pathname === "/api/plans" && method === "POST") return createPlan(req);
+    if (pathname === "/api/config" && method === "GET") return json(await port.config());
+    if (pathname === "/api/plans" && method === "GET") return json(await port.listPlans());
+    if (pathname === "/api/plans" && method === "POST") return createPlan(port, req);
     if (plan && method === "GET") {
-      const found = await store.getPlan(code);
+      const found = await port.getPlan(code);
       return found ? json(found) : refusal("not_found", `The plan ${code} does not exist.`, 404);
     }
-    if (plan && method === "PUT") return savePlan(code, req);
-    if (pathname === "/api/roadmaps" && method === "GET") return json(await store.listRoadmaps());
+    if (plan && method === "PUT") return savePlan(port, code, req);
+    if (pathname === "/api/roadmaps" && method === "GET") return json(await port.listRoadmaps());
     if (roadmapMatch && method === "GET") {
-      const found = await store.getRoadmap(code);
+      const found = await port.getRoadmap(code);
       return found ? json(found) : refusal("not_found", `The roadmap ${code} does not exist.`, 404);
     }
-    if (roadmapMatch && method === "PUT") return saveRoadmap(code, req);
-    if (pathname === "/api/check" && method === "GET") return json(await store.check());
+    if (roadmapMatch && method === "PUT") return saveRoadmap(port, code, req);
+    if (pathname === "/api/check" && method === "GET") return json(await port.check());
     if (pathname === "/api/draft" && method === "GET") {
-      return json(await store.draft(localeOr(url.searchParams.get("locale"))));
+      return json(await port.draft(localeOr(url.searchParams.get("locale"))));
     }
     if (pathname === "/api/draft/publish" && method === "POST") {
       const input = await body(req, publishInput);
-      await store.publish(input.summary ? input : { expectedRevision: input.expectedRevision });
+      await port.publish(input.summary ? input : { expectedRevision: input.expectedRevision });
       return json({ ok: true });
     }
     if (pathname === "/api/draft/finish-send" && method === "POST") {
       const input = await body(req, z.strictObject({ expectedHead: z.string().min(1) }));
-      await store.finishSend(input.expectedHead);
+      await port.finishSend(input.expectedHead);
       return json({ ok: true });
     }
     if (pathname === "/api/draft/discard" && method === "POST") {
       const input = await body(req, discardInput);
-      await store.discard(input.scope, input.expectedRevision);
+      await port.discard(input.scope, input.expectedRevision);
       return json({ ok: true });
     }
     if (pathname === "/api/draft/pull" && method === "POST") {
-      await store.pull();
+      await port.pull();
       return json({ ok: true });
     }
     if (pathname === "/api/events" && method === "GET") return events(req);
@@ -272,8 +297,27 @@ export function createApi(store: MissionControlStore, options: ApiOptions) {
     const url = new URL(req.url);
     const refused = writeRefusal(req, options.allowedOrigins);
     if (refused) return refused;
+    // Who came: no application role grants nothing (decision 0231).
+    const access = options.access(req);
+    if (!access.admitted)
+      return refusal("forbidden", "Mission Control needs an application role.", 403);
+    // One writer: a copy that may not write refuses every change before it
+    // reaches the store, so no draft, publish or pull starts there either.
+    if (WRITE_METHODS.has(req.method) && !access.mayWrite)
+      return refusal(
+        "data_read_only",
+        "This copy of Mission Control does not change data now.",
+        409,
+      );
     try {
-      return await route(req, url);
+      // Who made the change and by which channel (Module Standard, One data
+      // port): the channel as the caller states it in its header (the
+      // interface states `ui`); a request that states none is unknown, never
+      // guessed. The statement is the caller's, not a proof.
+      const channel = channelOf(req.headers.get(CHANNEL_HEADER));
+      return await withOrigin({ subject: access.subject ?? null, channel }, () =>
+        route(req, url, access.mayWrite, access.mayWrite ? store : readOnly(store)),
+      );
     } catch (error) {
       return errorResponse(error);
     }

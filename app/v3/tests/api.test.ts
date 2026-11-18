@@ -7,7 +7,11 @@ const ORIGIN = "http://127.0.0.1:24901";
 
 function setup() {
   const store = createMemoryStore(sampleData());
-  const api = createApi(store, { allowedOrigins: new Set([ORIGIN]), today: () => "2026-11-03" });
+  const api = createApi(store, {
+    allowedOrigins: new Set([ORIGIN]),
+    access: () => ({ admitted: true, mayWrite: true }),
+    today: () => "2026-11-03",
+  });
   const call = (method: string, path: string, body?: unknown, origin: string | null = ORIGIN) =>
     api(
       new Request(`${ORIGIN}${path}`, {
@@ -36,9 +40,13 @@ const newPlanInput = {
 describe("HTTP API", () => {
   test("tells the client the language it was started with", async () => {
     const store = createMemoryStore(sampleData());
-    const english = createApi(store, { allowedOrigins: new Set([ORIGIN]), locale: "en" });
+    const english = createApi(store, {
+      allowedOrigins: new Set([ORIGIN]),
+      access: () => ({ admitted: true, mayWrite: true }),
+      locale: "en",
+    });
     const status = await (await english(new Request(`${ORIGIN}/api/status`))).json();
-    expect(status).toEqual({ ok: true, locale: "en" });
+    expect(status).toEqual({ ok: true, locale: "en", mayWrite: true });
     const { call } = setup();
     expect((await (await call("GET", "/api/status")).json()).locale).toBeNull();
   });
