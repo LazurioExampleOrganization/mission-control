@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 4.2.0 — 2026-11-18
+
 Ready as an Application of an Organization (Lazurio decision 0249, Module
 Standard `MS-19`), on the stack profile `app-data@2026.12`.
 
