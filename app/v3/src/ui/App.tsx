@@ -17,6 +17,7 @@ import { PlanListPage } from "./pages/PlanListPage.tsx";
 import { RoadmapDetailPage } from "./pages/RoadmapDetailPage.tsx";
 import { RoadmapListPage } from "./pages/RoadmapListPage.tsx";
 import { parseRoute, type Route } from "./routes.ts";
+import { useCanWrite, WriteContext } from "./write.tsx";
 
 export interface MissionData {
   config: MissionControlConfig;
@@ -40,15 +41,19 @@ export function App() {
   const [data, setData] = useState<MissionData | null>(null);
   const [draft, setDraft] = useState<DraftPanelInput | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
+  // Nothing is offered for change until the server says this copy writes.
+  const [canWrite, setCanWrite] = useState<boolean | null>(null);
 
   const reload = useCallback(async () => {
     try {
-      const [config, plans, roadmaps] = await Promise.all([
+      const [config, plans, roadmaps, status] = await Promise.all([
         api.config(),
         api.plans(),
         api.roadmaps(),
+        api.status(),
       ]);
       setData({ config, plans, roadmaps });
+      setCanWrite(status.mayWrite === true);
       setError(null);
     } catch (caught) {
       setError(caught instanceof ApiError ? caught : new ApiError("unexpected", String(caught)));
@@ -72,21 +77,23 @@ export function App() {
   };
 
   return (
-    <Layout route={route} draft={draft}>
-      {error ? (
-        <>
-          {route.page === "overview" ? (
-            <header className="page-header">
-              <h1 className="page-title">{messages.overview.title}</h1>
-            </header>
-          ) : null}
-          <ErrorNotice error={error} lead={messages.app.loadFailed} />
-          {route.page === "overview" ? <Intro /> : null}
-        </>
-      ) : null}
-      {data && !error ? <Page route={route} data={data} onChanged={changed} /> : null}
-      {!data && !error ? <p className="muted">{messages.app.loading}</p> : null}
-    </Layout>
+    <WriteContext.Provider value={canWrite}>
+      <Layout route={route} draft={draft}>
+        {error ? (
+          <>
+            {route.page === "overview" ? (
+              <header className="page-header">
+                <h1 className="page-title">{messages.overview.title}</h1>
+              </header>
+            ) : null}
+            <ErrorNotice error={error} lead={messages.app.loadFailed} />
+            {route.page === "overview" ? <Intro /> : null}
+          </>
+        ) : null}
+        {data && !error ? <Page route={route} data={data} onChanged={changed} /> : null}
+        {!data && !error ? <p className="muted">{messages.app.loading}</p> : null}
+      </Layout>
+    </WriteContext.Provider>
   );
 }
 
@@ -100,6 +107,14 @@ function Page({
   onChanged: () => Promise<void>;
 }) {
   const { messages } = useI18n();
+  const canWrite = useCanWrite();
+  // A copy that may not write opens no form: the notice above says why.
+  if (!canWrite && (route.page === "new-plan" || route.page === "edit-plan"))
+    return route.page === "edit-plan" ? (
+      <PlanDetailPage data={data} code={route.code} />
+    ) : (
+      <OverviewPage data={data} />
+    );
   switch (route.page) {
     case "overview":
       return <OverviewPage data={data} />;

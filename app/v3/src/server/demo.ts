@@ -34,5 +34,6 @@ await serve(
       roadmaps: sample.roadmaps.map((entry) => entry.value),
     }),
   `demo (example data in memory, ${requested})`,
-  { locale: requested },
+  // The demo's data live only in memory: its visitor is admitted and writes.
+  { locale: requested, access: () => ({ admitted: true, mayWrite: true }) },
 );

@@ -70,10 +70,10 @@ git merge --no-ff <commit>
 ## Stack profile releases
 
 The template follows the stack profile [`app-data`](https://github.com/Lazurio/LazurioPlatform/blob/main/docs/stack-profiles.md#app-data)
-(release 2026.11): exact versions of
+(release 2026.12, `app-data@2026.12`): exact versions of
 Bun, TypeScript, Vite, React, Biome, Zod, repository-db and module-kit
 (see `app/v3/package.json`). A **stack profile release** moves those versions
-together, for example `app-data@2026.11` to `app-data@2027.05`: one template release that
+together, for example `app-data@2026.12` to `app-data@2027.05`: one template release that
 updates `packageManager`, the exact versions, `bun.lock`, the CI's Bun and, if
 the formatter changed, reformats once. Organizations take it by merging its
 tag like any other release. Between profile releases only patch versions with

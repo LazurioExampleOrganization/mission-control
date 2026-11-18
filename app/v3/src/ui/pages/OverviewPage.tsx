@@ -6,10 +6,12 @@ import { Progress, StatusChip } from "../components/Chips.tsx";
 import { Intro } from "../components/Intro.tsx";
 import { useI18n } from "../i18n.tsx";
 import { href } from "../routes.ts";
+import { useCanWrite } from "../write.tsx";
 
 export function OverviewPage({ data }: { data: MissionData }) {
   const { locale, messages } = useI18n();
   const words = messages.overview;
+  const canWrite = useCanWrite();
   const main = data.roadmaps.find((entry) => entry.value.main) ?? data.roadmaps[0];
   const active = data.plans.filter((entry) =>
     ["ready", "in_progress", "review", "blocked"].includes(entry.value.status),
@@ -30,9 +32,11 @@ export function OverviewPage({ data }: { data: MissionData }) {
         <article className="panel empty">
           <div className="panel-head">
             <h2>{words.firstPlanTitle}</h2>
-            <a className="button primary" href={href({ page: "new-plan" })}>
-              {messages.nav.newPlan}
-            </a>
+            {canWrite ? (
+              <a className="button primary" href={href({ page: "new-plan" })}>
+                {messages.nav.newPlan}
+              </a>
+            ) : null}
           </div>
           <p>{words.firstPlanText}</p>
         </article>
@@ -98,9 +102,11 @@ export function OverviewPage({ data }: { data: MissionData }) {
         <article className="panel">
           <div className="panel-head">
             <h2>{words.activePlans}</h2>
-            <a className="button" href={href({ page: "new-plan" })}>
-              {messages.nav.newPlan}
-            </a>
+            {canWrite ? (
+              <a className="button" href={href({ page: "new-plan" })}>
+                {messages.nav.newPlan}
+              </a>
+            ) : null}
           </div>
           {active.length === 0 ? (
             <p className="muted">{words.nothingActive}</p>

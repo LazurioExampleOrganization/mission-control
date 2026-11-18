@@ -4,6 +4,7 @@ import type { MissionData } from "../App.tsx";
 import { PriorityChip, StatusChip } from "../components/Chips.tsx";
 import { useI18n } from "../i18n.tsx";
 import { href } from "../routes.ts";
+import { useCanWrite } from "../write.tsx";
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -28,6 +29,7 @@ function Items({ items }: { items: readonly string[] | undefined }) {
 export function PlanDetailPage({ data, code }: { data: MissionData; code: string }) {
   const { locale, messages } = useI18n();
   const words = messages.plan;
+  const canWrite = useCanWrite();
   const found = data.plans.find((entry) => entry.value.dev_code === code);
   if (!found) {
     return (
@@ -52,9 +54,11 @@ export function PlanDetailPage({ data, code }: { data: MissionData; code: string
         </p>
         <div className="title-row">
           <h1 className="page-title">{plan.title}</h1>
-          <a className="button primary" href={href({ page: "edit-plan", code })}>
-            {words.edit}
-          </a>
+          {canWrite ? (
+            <a className="button primary" href={href({ page: "edit-plan", code })}>
+              {words.edit}
+            </a>
+          ) : null}
         </div>
         <div className="meta-row">
           <StatusChip status={plan.status} />
