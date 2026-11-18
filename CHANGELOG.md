@@ -25,7 +25,9 @@ Standard `MS-19`), on the stack profile `app-data@2026.12`.
   never writes without `true`, from any entry. A copy that may not write
   changes no record and never fetches, pulls or publishes, not even on a read;
   it reads its draft status from the checkout, and watches the checkout so an
-  open page hears when the host updates the replica. Every request that may not
+  open page hears when the host updates the replica: when the data become
+  available, a new commit, a fetched newer state it does not pull, and every
+  change of the draft and its records. Every request that may not
   write gets the store as a read-only view (`readOnly` of the storage port),
   so a change is refused at the port too. `/api/status` tells the page
   `mayWrite` for the request.
