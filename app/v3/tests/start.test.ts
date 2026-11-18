@@ -5,8 +5,10 @@ import packageJson from "../package.json";
 
 // The start contract of the Module Standard: Lazurio runs the `dev` script
 // with only bun on PATH and the listener environment; without it the App
-// refuses to start, with it the health path answers 200 directly, a foreign
-// Host is refused and SIGTERM ends the App with exit 0.
+// refuses to start, with it the health path answers directly and deeply (503
+// until the App's data are open, 200 once they are; Module Standard,
+// Applications of an Organization), a foreign Host is refused and SIGTERM ends
+// the App with exit 0.
 const app = resolve(import.meta.dir, "..");
 const runtime = packageJson.lazurio.runtime;
 const [entrypoint] = runtime.listeners;
@@ -28,7 +30,7 @@ describe("start contract", () => {
   });
 
   test(
-    "answers health with 200, refuses a foreign Host and exits 0 on SIGTERM",
+    "answers health deeply (503 without its data), refuses a foreign Host and exits 0 on SIGTERM",
     async () => {
       const port = await freePort();
       const server = Bun.spawn([process.execPath, "run", runtime.dev_script], {
@@ -39,8 +41,10 @@ describe("start contract", () => {
       });
       try {
         const url = `http://127.0.0.1:${port}${entrypoint.health.path}`;
+        // Without a data checkout the health is not ready: 503, never a 200
+        // that would let the host route people to an App without its data.
         const health = await firstResponse(url, startTimeoutMs);
-        expect(health.status).toBe(200);
+        expect(health.status).toBe(503);
         const foreign = await fetch(url, {
           headers: { host: "foreign.invalid" },
           redirect: "manual",

@@ -8,10 +8,10 @@ import {
 } from "@lazurio/module-kit";
 import type { MissionControlStore } from "../data/store.ts";
 import type { Locale } from "../i18n/locale.ts";
+import { accessOf, LISTENER } from "./access.ts";
 import { createApi } from "./api.ts";
 import { clientDirectory, createStaticHandler } from "./static.ts";
 
-const LISTENER = "web";
 export const HEALTH_PATH = "/healthz";
 /**
  * Lazurio's own paths (`/.lazurio/shell.json` with the person's language).
@@ -30,7 +30,11 @@ const notLazurio = () => new Response("Not found", { status: 404 });
 export async function serve(
   createStore: () => MissionControlStore,
   label: string,
-  options: { locale?: Locale } = {},
+  options: {
+    locale?: Locale;
+    /** Only the demo, whose data live in memory, admits and writes without Lazurio. */
+    access?: (request: Request) => { admitted: boolean; mayWrite: boolean };
+  } = {},
 ) {
   let app: Listener;
   try {
@@ -50,6 +54,7 @@ export async function serve(
   if (app.externalOrigin) origins.add(app.externalOrigin);
   const api = createApi(store, {
     allowedOrigins: origins,
+    access: options.access ?? ((request) => accessOf(request)),
     ...(options.locale ? { locale: options.locale } : {}),
   });
 
@@ -63,15 +68,19 @@ export async function serve(
 
   const production = process.env.NODE_ENV === "production";
   const serveClient = production ? createStaticHandler(clientDirectory()) : null;
-  const handle = withHealth(async (req: Request) => {
-    const url = new URL(req.url);
-    if (url.pathname.startsWith("/api/")) return api(req);
-    if (url.pathname.startsWith(LAZURIO_PATHS)) return notLazurio();
-    if (serveClient && (req.method === "GET" || req.method === "HEAD")) {
-      return serveClient(url.pathname);
-    }
-    return new Response("Not found", { status: 404 });
-  }, HEALTH_PATH);
+  const handle = withHealth(
+    async (req: Request) => {
+      const url = new URL(req.url);
+      if (url.pathname.startsWith("/api/")) return api(req);
+      if (url.pathname.startsWith(LAZURIO_PATHS)) return notLazurio();
+      if (serveClient && (req.method === "GET" || req.method === "HEAD")) {
+        return serveClient(url.pathname);
+      }
+      return new Response("Not found", { status: 404 });
+    },
+    HEALTH_PATH,
+    async () => (await store.available()).ok,
+  );
   const guarded = (req: Request) =>
     hostAllowed(req) ? handle(req) : new Response("Forbidden host", { status: 403 });
 

@@ -4,6 +4,7 @@ import type { Messages } from "../../i18n/messages.ts";
 import { missionControlBrand } from "../../instance/brand.ts";
 import { useI18n } from "../i18n.tsx";
 import { href, type Route } from "../routes.ts";
+import { useCanWrite, useReadOnly } from "../write.tsx";
 
 const NAV: { label: keyof Messages["nav"]; route: Route; matches: Route["page"][] }[] = [
   { label: "overview", route: { page: "overview" }, matches: ["overview"] },
@@ -42,6 +43,8 @@ export function Layout({
 }) {
   const { messages } = useI18n();
   const count = draftCount(draft);
+  const canWrite = useCanWrite();
+  const readOnly = useReadOnly();
   const organization =
     missionControlBrand.organization === PLACEHOLDER_ORGANIZATION
       ? messages.nav.organizationPlaceholder
@@ -54,7 +57,7 @@ export function Layout({
           <span className="sidebar-context">{organization}</span>
         </div>
         <ul className="sidebar-items">
-          {NAV.map((item) => {
+          {NAV.filter((item) => canWrite || item.route.page !== "new-plan").map((item) => {
             const active = item.matches.includes(route.page);
             return (
               <li key={item.label}>
@@ -75,7 +78,14 @@ export function Layout({
           })}
         </ul>
       </nav>
-      <main className="content-area">{children}</main>
+      <main className="content-area">
+        {readOnly ? (
+          <p className="notice notice-read-only" role="status">
+            {messages.app.readOnly}
+          </p>
+        ) : null}
+        {children}
+      </main>
     </div>
   );
 }

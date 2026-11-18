@@ -4,10 +4,12 @@ import type { MissionData } from "../App.tsx";
 import { PriorityChip, StatusChip } from "../components/Chips.tsx";
 import { useI18n } from "../i18n.tsx";
 import { href } from "../routes.ts";
+import { useCanWrite } from "../write.tsx";
 
 export function PlanListPage({ data, status }: { data: MissionData; status: Status | null }) {
   const { locale, messages } = useI18n();
   const words = messages.plans;
+  const canWrite = useCanWrite();
   const plans = status ? data.plans.filter((entry) => entry.value.status === status) : data.plans;
   return (
     <section>
@@ -39,7 +41,8 @@ export function PlanListPage({ data, status }: { data: MissionData; status: Stat
         <p className="muted">
           {data.plans.length === 0 ? (
             <>
-              {words.none} <a href={href({ page: "new-plan" })}>{messages.nav.newPlan}</a>
+              {words.none}{" "}
+              {canWrite ? <a href={href({ page: "new-plan" })}>{messages.nav.newPlan}</a> : null}
             </>
           ) : (
             words.noneInState

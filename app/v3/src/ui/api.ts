@@ -69,6 +69,8 @@ export interface NewPlanInput {
 }
 
 export const api = {
+  /** Whether this copy lets the person change data now (the one writer rule). */
+  status: () => request<{ mayWrite: boolean }>("/api/status"),
   config: () => request<MissionControlConfig>("/api/config"),
   plans: () => request<Stored<Plan>[]>("/api/plans"),
   plan: (code: string) => request<Stored<Plan>>(`/api/plans/${encodeURIComponent(code)}`),

@@ -7,7 +7,7 @@
       "dependencies": {
         "@fontsource-variable/inter-tight": "5.3.0",
         "@fontsource/geist-mono": "5.3.0",
-        "@lazurio/module-kit": "github:Lazurio/module-kit#v0.2.0",
+        "@lazurio/module-kit": "github:Lazurio/module-kit#v0.4.0",
         "@lazurio/repository-db": "github:Lazurio/repository-db#v3.2.6",
         "react": "19.3.1",
         "react-dom": "19.3.1",
@@ -51,7 +51,7 @@
 
     "@fontsource/geist-mono": ["@fontsource/geist-mono@5.3.0", "", {}, "sha512-UtJ1BBBCVpMYdIcW7nEB45UAoAw5M53ZXs2t0ciPW+IokuAAIc56M8+kW5tXbRJCTpDw4XTtU7proT6NdQAHTg=="],
 
-    "@lazurio/module-kit": ["@lazurio/module-kit@github:Lazurio/module-kit#2183f0a", {}, "Lazurio-module-kit-2183f0a", "sha512-yCkj5xNH3lue5/eqbCW1TezlyJxx8fz2KpsmdlyWJ/JJIj2HW7phfNq7GTZwz+5RUGBbKCmZN6M1tsR6OcIpnw=="],
+    "@lazurio/module-kit": ["@lazurio/module-kit@github:Lazurio/module-kit#7cc0c4c", {}, "Lazurio-module-kit-7cc0c4c", "sha512-yqtGU6w5QpnJUL2jq/74Xr5x/VPoLoe9IzW14/k25vlaR1uiHIAEkpVyX3pntEgkWG2be/LkKCJKWpcOxYasPg=="],
 
     "@lazurio/repository-db": ["@lazurio/repository-db@github:Lazurio/repository-db#db91c63", { "dependencies": { "yaml": "^2.8.0" }, "peerDependencies": { "react": ">=18" }, "optionalPeers": ["react"], "bin": { "repository-db": "./src/cli.ts" } }, "Lazurio-repository-db-db91c63", "sha512-14CRzUSEFoLf1jloI6PBqqEOgxqh7RmIUtvmTRTepFnwkaVkpAbyyP+OXaFo2fwNBJBytgXARsoPfILFME0DBQ=="],
 

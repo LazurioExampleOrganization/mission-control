@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import type { MissionControlStore } from "../src/data/store.ts";
+import { type CHANGES, type MissionControlStore, readOnly } from "../src/data/store.ts";
 import { newPlan, sampleData } from "./support/seed.ts";
 
 /**
@@ -36,6 +36,29 @@ export function storeContract(
       }
       throw new Error("expected a refusal");
     };
+
+    test("a read-only view refuses every change and changes nothing", async () => {
+      const view = readOnly(store);
+      const state = async () => ({
+        plans: await store.listPlans(),
+        roadmaps: await store.listRoadmaps(),
+        draft: (await store.draft()).records?.length ?? 0,
+      });
+      const before = await state();
+      const roadmap = before.roadmaps[0]?.value;
+      const attempts: Record<keyof typeof CHANGES, () => Promise<unknown>> = {
+        savePlan: () => view.savePlan(newPlan(), null),
+        saveRoadmap: () => view.saveRoadmap(roadmap as never, before.roadmaps[0]?.revision ?? null),
+        publish: () => view.publish({ expectedRevision: "r" }),
+        finishSend: () => view.finishSend("h"),
+        discard: () => view.discard({ kind: "draft" }, "r"),
+        pull: () => view.pull(),
+      };
+      for (const attempt of Object.values(attempts))
+        expect(await refusal(attempt)).toBe("data_read_only");
+      expect(await view.listPlans()).toEqual(before.plans);
+      expect(await state()).toEqual(before);
+    });
 
     test("reads the settings, plans in working order and roadmaps", async () => {
       expect(await store.available()).toEqual({ ok: true });

@@ -71,6 +71,8 @@ const cs = {
     loadFailed: "Data se nepodařilo načíst.",
     notFoundTitle: "Stránka neexistuje",
     backToOverview: "Zpět na přehled",
+    readOnly:
+      "Tato kopie Mission Control je teď jen ke čtení: plány, roadmapy ani koncept tu změnit nejde.",
   },
   nav: {
     label: "Hlavní navigace",
@@ -390,6 +392,8 @@ const cs = {
       config_missing: "Data Organizace zatím nemají nastavení Mission Control.",
       config_changed: "Nastavení dat se změnilo. Obnovte stránku.",
       origin_refused: "Změnu lze poslat jen z Mission Control.",
+      data_read_only: "Tato kopie Mission Control je teď jen ke čtení, změna se neuložila.",
+      forbidden: "V Mission Control nemáte roli. O přístup požádejte Admina Organizace.",
     } as Record<string, string>,
     unexpected: (code: string) => `Něco se nepovedlo. Technický kód: ${code}.`,
   },
@@ -446,6 +450,8 @@ const en: Messages = {
     loadFailed: "The data could not be loaded.",
     notFoundTitle: "This page does not exist",
     backToOverview: "Back to the overview",
+    readOnly:
+      "This copy of Mission Control is read-only now: plans, roadmaps and the draft cannot be changed here.",
   },
   nav: {
     label: "Main navigation",
@@ -764,6 +770,8 @@ const en: Messages = {
       config_missing: "The Organization's data has no Mission Control settings yet.",
       config_changed: "The data settings changed. Reload the page.",
       origin_refused: "A change can be sent only from Mission Control.",
+      data_read_only: "This copy of Mission Control is read-only now; the change was not saved.",
+      forbidden: "You have no role in Mission Control. Ask the Organization Admin for access.",
     },
     unexpected: (code: string) => `Something went wrong. Technical code: ${code}.`,
   },
