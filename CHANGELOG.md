@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 4.2.1 — 2026-11-19
+
 ### For people
 
 - On a phone the plan list is readable: a title and an owner keep room for a
