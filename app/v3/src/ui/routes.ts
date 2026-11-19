@@ -36,6 +36,16 @@ export function parseRoute(hash: string): Route {
   return { page: "not-found" };
 }
 
+/**
+ * Whether two hashes address the same page: the path decides, the query (a
+ * filter of the plan list) does not. A new page starts at its top; a filter
+ * on the same page keeps the reader's place.
+ */
+export function samePage(a: string, b: string): boolean {
+  const path = (hash: string) => hash.replace(/^#/, "").split("?")[0] || "/";
+  return path(a) === path(b);
+}
+
 export function href(route: Route): string {
   switch (route.page) {
     case "overview":

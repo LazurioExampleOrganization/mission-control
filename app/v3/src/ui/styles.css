@@ -662,6 +662,19 @@ textarea {
   overflow-x: auto;
 }
 
+/* The table inherits `overflow-wrap: anywhere` from .content-area, so even a
+   value without spaces wraps inside its column and never widens the table.
+   It also lets a column shrink to one letter on a phone; these widths keep a
+   title and an owner readable, and the table scrolls sideways in
+   .table-scroll when the phone is narrower than them. */
+.table .title-cell {
+  min-width: 11rem;
+}
+
+.table .owner-cell {
+  min-width: 7rem;
+}
+
 .nowrap,
 .table .code {
   white-space: nowrap;
