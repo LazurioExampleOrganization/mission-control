@@ -89,7 +89,7 @@ This repository is the Mission Control of Lazurio Example Organization
 application module `mission-control/`. It follows the Marketplace template
 `LazurioTemplates/mission-control` and takes its releases by merging their
 tags (`docs/extending.md`, "Taking a template release"); the current release
-is v4.2.0 (`31a33b523722e050e8d935a5c293804d904500bd`).
+is v4.2.1 (`79a38df68be77b5a2faa3a71a9ca8dc08e294388`).
 
 - **Review and merge** follow the Organization's root `AGENTS.md`: the Team
   `workspace` reviews (`.github/CODEOWNERS`), and a person with live write
