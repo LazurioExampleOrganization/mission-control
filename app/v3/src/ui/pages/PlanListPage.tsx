@@ -69,7 +69,7 @@ export function PlanListPage({ data, status }: { data: MissionData; status: Stat
                       {value.dev_code}
                     </a>
                   </td>
-                  <td>
+                  <td className="title-cell">
                     <a href={href({ page: "plan", code: value.dev_code })}>{value.title}</a>
                   </td>
                   <td>
@@ -78,7 +78,7 @@ export function PlanListPage({ data, status }: { data: MissionData; status: Stat
                   <td>
                     <PriorityChip priority={value.priority} />
                   </td>
-                  <td>{value.owner}</td>
+                  <td className="owner-cell">{value.owner}</td>
                   <td className="muted nowrap">{formatDate(locale, value.updated_at)}</td>
                 </tr>
               ))}

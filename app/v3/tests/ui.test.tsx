@@ -11,7 +11,7 @@ import { PlanListPage } from "../src/ui/pages/PlanListPage.tsx";
 import { RoadmapDetailPage } from "../src/ui/pages/RoadmapDetailPage.tsx";
 import { RoadmapListPage } from "../src/ui/pages/RoadmapListPage.tsx";
 import { listsOf, planFromForm } from "../src/ui/plan-form.ts";
-import { href, parseRoute } from "../src/ui/routes.ts";
+import { href, parseRoute, samePage } from "../src/ui/routes.ts";
 import { WriteContext } from "../src/ui/write.tsx";
 import { sampleData } from "./support/seed.ts";
 
@@ -54,6 +54,15 @@ describe("routes", () => {
       expect(parseRoute(href(route))).toEqual(route);
     }
     expect(parseRoute("#/nowhere/at/all").page).toBe("not-found");
+  });
+
+  test("a filter stays on the same page, a link to another page does not", () => {
+    expect(samePage("#/plans", "#/plans?status=ready")).toBe(true);
+    expect(samePage("#/plans?status=ready", "#/plans?status=done")).toBe(true);
+    expect(samePage("", "#/")).toBe(true);
+    expect(samePage("#/plans", "#/plans/EX-0001")).toBe(false);
+    expect(samePage("#/plans/new", "#/plans/EX-0005")).toBe(false);
+    expect(samePage("#/", "#/roadmaps")).toBe(false);
   });
 });
 

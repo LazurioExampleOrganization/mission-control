@@ -16,7 +16,7 @@ import { PlanEditPage } from "./pages/PlanEditPage.tsx";
 import { PlanListPage } from "./pages/PlanListPage.tsx";
 import { RoadmapDetailPage } from "./pages/RoadmapDetailPage.tsx";
 import { RoadmapListPage } from "./pages/RoadmapListPage.tsx";
-import { parseRoute, type Route } from "./routes.ts";
+import { parseRoute, type Route, samePage } from "./routes.ts";
 import { useCanWrite, WriteContext } from "./write.tsx";
 
 export interface MissionData {
@@ -28,7 +28,15 @@ export interface MissionData {
 function useHashRoute(): Route {
   const [route, setRoute] = useState(() => parseRoute(window.location.hash));
   useEffect(() => {
-    const update = () => setRoute(parseRoute(window.location.hash));
+    let shown = window.location.hash;
+    const update = () => {
+      const next = window.location.hash;
+      // A link to another page opens it at its top, not at the height the
+      // previous page was scrolled to; a filter of the same page keeps it.
+      if (!samePage(shown, next)) window.scrollTo(0, 0);
+      shown = next;
+      setRoute(parseRoute(next));
+    };
     window.addEventListener("hashchange", update);
     return () => window.removeEventListener("hashchange", update);
   }, []);
